@@ -67,6 +67,18 @@
 			<artifactId>spring-boot-starter-webmvc-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>org.wiremock.integrations</groupId>
+			<artifactId>wiremock-spring-boot</artifactId>
+			<version>4.2.2</version>
+			<scope>test</scope>
+			<exclusions>
+				<exclusion>
+					<groupId>com.networknt</groupId>
+					<artifactId>json-schema-validator</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
 	</dependencies>
 	<dependencyManagement>
 		<dependencies>
