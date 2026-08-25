@@ -1,7 +1,7 @@
-package com.juancasimiro.spring_mcp_gateway.integration.rag;
+package com.juancasimiro.mcpgateway.integration.rag;
 
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchAnswer;
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchQuestion;
+import com.juancasimiro.mcpgateway.application.research.ResearchAnswer;
+import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;

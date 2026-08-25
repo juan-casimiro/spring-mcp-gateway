@@ -1,4 +1,4 @@
-package com.juancasimiro.spring_mcp_gateway.integration.rag.dto;
+package com.juancasimiro.mcpgateway.integration.rag.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 

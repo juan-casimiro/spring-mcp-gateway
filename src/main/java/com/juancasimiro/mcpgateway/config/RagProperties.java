@@ -1,4 +1,4 @@
-package com.juancasimiro.spring_mcp_gateway.config;
+package com.juancasimiro.mcpgateway.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

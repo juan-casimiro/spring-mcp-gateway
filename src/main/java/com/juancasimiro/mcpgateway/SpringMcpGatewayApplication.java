@@ -1,4 +1,4 @@
-package com.juancasimiro.spring_mcp_gateway;
+package com.juancasimiro.mcpgateway;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;

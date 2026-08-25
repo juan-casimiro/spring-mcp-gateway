@@ -1,9 +1,9 @@
-package com.juancasimiro.spring_mcp_gateway.mcp;
+package com.juancasimiro.mcpgateway.mcp;
 
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchAnswer;
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchGateway;
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchQuestion;
-import com.juancasimiro.spring_mcp_gateway.mcp.model.QueryResearchCorpusResponse;
+import com.juancasimiro.mcpgateway.application.research.ResearchAnswer;
+import com.juancasimiro.mcpgateway.application.research.ResearchGateway;
+import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
+import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
