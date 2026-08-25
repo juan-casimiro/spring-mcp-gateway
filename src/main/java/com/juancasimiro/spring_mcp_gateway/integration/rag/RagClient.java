@@ -28,6 +28,11 @@ public class RagClient implements ResearchGateway {
                 .retrieve()
                 .body(RagQueryResponse.class);
 
+        // Full upstream failure handling is Epic C (JUA-57).
+        if (response == null) {
+            throw new IllegalStateException("RAG service returned an empty response body");
+        }
+
         return toResearchAnswer(response);
     }
 
