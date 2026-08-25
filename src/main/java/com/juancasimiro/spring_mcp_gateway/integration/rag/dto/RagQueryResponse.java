@@ -1,4 +1,4 @@
-package com.juancasimiro.spring_mcp_gateway.model;
+package com.juancasimiro.spring_mcp_gateway.integration.rag.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 
@@ -10,5 +10,5 @@ public record RagQueryResponse(
         @JsonProperty("context_sufficient")
         boolean contextSufficient,
         @JsonProperty("insufficiency_reason")
-        String insufficiencyReason){
+        String insufficiencyReason) {
 }

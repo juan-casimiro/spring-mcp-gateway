@@ -1,8 +1,8 @@
 package com.juancasimiro.spring_mcp_gateway;
 
-import com.juancasimiro.spring_mcp_gateway.model.RagQueryRequest;
-import com.juancasimiro.spring_mcp_gateway.model.RagQueryResponse;
-import com.juancasimiro.spring_mcp_gateway.services.RagClient;
+import com.juancasimiro.spring_mcp_gateway.application.research.ResearchAnswer;
+import com.juancasimiro.spring_mcp_gateway.application.research.ResearchQuestion;
+import com.juancasimiro.spring_mcp_gateway.integration.rag.RagClient;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
@@ -23,8 +23,8 @@ class RagClientIT {
 
     @Test
     void queriesLiveRagService() {
-        RagQueryResponse response = ragClient.query(
-                new RagQueryRequest(
+        ResearchAnswer response = ragClient.query(
+                new ResearchQuestion(
                         "What does CT-FFR measure in coronary artery disease?",
                         8
                 )
@@ -37,8 +37,8 @@ class RagClientIT {
 
     @Test
     void queriesLiveRagServiceInsufficientContext() {
-        RagQueryResponse response = ragClient.query(
-                new RagQueryRequest(
+        ResearchAnswer response = ragClient.query(
+                new ResearchQuestion(
            "Give me the percentage of diabetes found on wild jelly fish",
             8
         ));
