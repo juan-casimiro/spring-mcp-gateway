@@ -32,7 +32,12 @@ public class RagClient implements ResearchGateway {
     }
 
     private RagQueryRequest toRequest(ResearchQuestion question) {
-        return new RagQueryRequest(question.question(), question.resultCount());
+        return new RagQueryRequest(
+                question.question(),
+                question.resultCount(),
+                false,
+                false
+        );
     }
 
     private ResearchAnswer toResearchAnswer(RagQueryResponse response) {

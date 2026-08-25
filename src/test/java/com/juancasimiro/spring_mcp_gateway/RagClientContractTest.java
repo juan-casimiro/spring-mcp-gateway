@@ -36,7 +36,9 @@ class RagClientContractTest {
                 .withRequestBody(equalToJson("""
                         {
                           "question": "What does CT-FFR measure?",
-                          "n_results": 8
+                          "n_results": 8,
+                          "use_bm25": false,
+                          "use_query_rewriting": false
                         }
                         """))
                 .willReturn(okJson("""
