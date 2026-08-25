@@ -11,6 +11,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class QueryResearchCorpusTool {
 
+    private static final int DEFAULT_RESULT_COUNT = 8;
+
     private final ResearchGateway researchGateway;
 
     public QueryResearchCorpusTool(ResearchGateway researchGateway) {
@@ -34,7 +36,7 @@ public class QueryResearchCorpusTool {
             )
             Integer resultCount) {
 
-        int effectiveResultCount = resultCount != null ? resultCount : 8;
+        int effectiveResultCount = resultCount != null ? resultCount : DEFAULT_RESULT_COUNT;
 
         ResearchAnswer answer = researchGateway.query(
                 new ResearchQuestion(question, effectiveResultCount)
