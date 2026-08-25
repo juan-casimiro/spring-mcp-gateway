@@ -1,4 +1,4 @@
-package com.juancasimiro.spring_mcp_gateway.mcp.model;
+package com.juancasimiro.mcpgateway.mcp.model;
 
 import java.util.List;
 

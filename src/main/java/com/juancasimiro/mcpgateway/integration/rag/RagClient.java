@@ -1,10 +1,10 @@
-package com.juancasimiro.spring_mcp_gateway.integration.rag;
+package com.juancasimiro.mcpgateway.integration.rag;
 
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchAnswer;
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchGateway;
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchQuestion;
-import com.juancasimiro.spring_mcp_gateway.integration.rag.dto.RagQueryRequest;
-import com.juancasimiro.spring_mcp_gateway.integration.rag.dto.RagQueryResponse;
+import com.juancasimiro.mcpgateway.application.research.ResearchAnswer;
+import com.juancasimiro.mcpgateway.application.research.ResearchGateway;
+import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
+import com.juancasimiro.mcpgateway.integration.rag.dto.RagQueryRequest;
+import com.juancasimiro.mcpgateway.integration.rag.dto.RagQueryResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -28,11 +28,21 @@ public class RagClient implements ResearchGateway {
                 .retrieve()
                 .body(RagQueryResponse.class);
 
+        // Full upstream failure handling is Epic C (JUA-57).
+        if (response == null) {
+            throw new IllegalStateException("RAG service returned an empty response body");
+        }
+
         return toResearchAnswer(response);
     }
 
     private RagQueryRequest toRequest(ResearchQuestion question) {
-        return new RagQueryRequest(question.question(), question.resultCount());
+        return new RagQueryRequest(
+                question.question(),
+                question.resultCount(),
+                false,
+                false
+        );
     }
 
     private ResearchAnswer toResearchAnswer(RagQueryResponse response) {

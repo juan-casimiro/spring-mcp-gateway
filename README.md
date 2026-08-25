@@ -26,6 +26,8 @@ Output:
 - `contextSufficient`: whether the retrieved context was sufficient
 - `insufficiencyReason`: explanation when context is insufficient; otherwise may be `null`
 
+The gateway pins the upstream `use_bm25` and `use_query_rewriting` flags off explicitly rather than inheriting the RAG service's defaults, so a change to those defaults cannot silently alter gateway behaviour. On this corpus, query rewriting measured no change and BM25 measured one attributable regression — see [ADR-001 in `ai-research-assistant`](https://github.com/juan-casimiro/ai-research-assistant/blob/main/adr/001-chunking-and-retrieval.md) for the full evaluation.
+
 ## Prerequisites
 
 - Java 25

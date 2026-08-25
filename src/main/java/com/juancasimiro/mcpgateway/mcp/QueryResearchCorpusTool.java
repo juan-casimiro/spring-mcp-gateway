@@ -1,15 +1,17 @@
-package com.juancasimiro.spring_mcp_gateway.mcp;
+package com.juancasimiro.mcpgateway.mcp;
 
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchAnswer;
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchGateway;
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchQuestion;
-import com.juancasimiro.spring_mcp_gateway.mcp.model.QueryResearchCorpusResponse;
+import com.juancasimiro.mcpgateway.application.research.ResearchAnswer;
+import com.juancasimiro.mcpgateway.application.research.ResearchGateway;
+import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
+import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
 import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Component;
 
 @Component
 public class QueryResearchCorpusTool {
+
+    private static final int DEFAULT_RESULT_COUNT = 8;
 
     private final ResearchGateway researchGateway;
 
@@ -34,7 +36,7 @@ public class QueryResearchCorpusTool {
             )
             Integer resultCount) {
 
-        int effectiveResultCount = resultCount != null ? resultCount : 8;
+        int effectiveResultCount = resultCount != null ? resultCount : DEFAULT_RESULT_COUNT;
 
         ResearchAnswer answer = researchGateway.query(
                 new ResearchQuestion(question, effectiveResultCount)

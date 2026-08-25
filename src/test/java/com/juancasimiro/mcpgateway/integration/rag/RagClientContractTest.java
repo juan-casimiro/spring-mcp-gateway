@@ -1,8 +1,7 @@
-package com.juancasimiro.spring_mcp_gateway;
+package com.juancasimiro.mcpgateway.integration.rag;
 
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchAnswer;
-import com.juancasimiro.spring_mcp_gateway.application.research.ResearchQuestion;
-import com.juancasimiro.spring_mcp_gateway.integration.rag.RagClient;
+import com.juancasimiro.mcpgateway.application.research.ResearchAnswer;
+import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
 import com.github.tomakehurst.wiremock.WireMockServer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -36,7 +35,9 @@ class RagClientContractTest {
                 .withRequestBody(equalToJson("""
                         {
                           "question": "What does CT-FFR measure?",
-                          "n_results": 8
+                          "n_results": 8,
+                          "use_bm25": false,
+                          "use_query_rewriting": false
                         }
                         """))
                 .willReturn(okJson("""
