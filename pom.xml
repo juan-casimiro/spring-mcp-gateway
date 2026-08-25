@@ -11,21 +11,8 @@
 	<groupId>com.juancasimiro</groupId>
 	<artifactId>spring-mcp-gateway</artifactId>
 	<version>0.0.1-SNAPSHOT</version>
-	<name/>
-	<description/>
-	<url/>
-	<licenses>
-		<license/>
-	</licenses>
-	<developers>
-		<developer/>
-	</developers>
-	<scm>
-		<connection/>
-		<developerConnection/>
-		<tag/>
-		<url/>
-	</scm>
+	<name>spring-mcp-gateway</name>
+	<description>Spring Boot MCP server exposing a FastAPI RAG service over Streamable HTTP.</description>
 	<properties>
 		<java.version>25</java.version>
 		<spring-ai.version>2.0.1</spring-ai.version>
