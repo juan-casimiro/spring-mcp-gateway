@@ -69,6 +69,36 @@ Run the gateway after starting the FastAPI RAG service:
 ./mvnw spring-boot:run
 ```
 
+## Verify with MCP Inspector
+
+1. Start `ai-research-assistant` by following its linked README above.
+2. Start the gateway:
+
+   ```bash
+   ./mvnw spring-boot:run
+   ```
+
+3. In another terminal, start MCP Inspector:
+
+   ```bash
+   npx @modelcontextprotocol/inspector
+   ```
+
+4. In Inspector, select **Streamable HTTP** and connect to `http://localhost:8080/mcp`.
+5. Open **Tools** and confirm that `query_research_corpus` is listed.
+6. Invoke the tool with:
+
+   ```json
+   {
+     "question": "What does CT-FFR measure in coronary artery disease?",
+     "resultCount": 8
+   }
+   ```
+
+   `resultCount` is optional and defaults to `8`.
+
+The end-to-end check succeeds when Inspector connects, discovers the tool, and the invocation reaches the upstream FastAPI service and returns a grounded `answer`, ordered `sources`, `contextSufficient`, and `insufficiencyReason`.
+
 ## Tests
 
 Run the normal unit, application-context, and WireMock-backed RAG contract tests:
