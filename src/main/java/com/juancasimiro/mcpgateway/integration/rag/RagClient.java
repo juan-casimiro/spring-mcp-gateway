@@ -16,6 +16,7 @@ import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 
 @Component
@@ -54,6 +55,12 @@ public class RagClient implements ResearchGateway {
             }
             throw new RagUnavailableException(exception);
         } catch (RestClientException exception) {
+            if (hasCause(exception, SocketTimeoutException.class)) {
+                throw new RagTimeoutException(exception);
+            }
+            if (hasCause(exception, SocketException.class)) {
+                throw new RagUnavailableException(exception);
+            }
             throw new RagContractException(exception);
         }
 
