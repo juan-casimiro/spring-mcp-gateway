@@ -39,7 +39,7 @@ public class RagClient implements ResearchGateway {
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, (httpRequest, httpResponse) -> {
                         HttpStatusCode statusCode = httpResponse.getStatusCode();
-                        if (statusCode.value() == HttpStatus.GATEWAY_TIMEOUT.value()) {
+                        if (statusCode.isSameCodeAs(HttpStatus.GATEWAY_TIMEOUT)) {
                             throw new RagTimeoutException();
                         }
                         if (statusCode.is5xxServerError()) {
