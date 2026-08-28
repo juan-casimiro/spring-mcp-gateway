@@ -1,5 +1,7 @@
 package com.juancasimiro.mcpgateway.application.research;
 
+import com.juancasimiro.mcpgateway.application.research.exception.InvalidResearchQuestionException;
+
 public record ResearchQuestion(
         String question,
         int resultCount) {

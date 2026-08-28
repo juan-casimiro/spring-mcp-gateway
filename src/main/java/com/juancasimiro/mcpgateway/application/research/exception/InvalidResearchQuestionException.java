@@ -1,4 +1,4 @@
-package com.juancasimiro.mcpgateway.application.research;
+package com.juancasimiro.mcpgateway.application.research.exception;
 
 public final class InvalidResearchQuestionException extends IllegalArgumentException {
 

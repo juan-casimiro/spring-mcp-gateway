@@ -2,6 +2,7 @@ package com.juancasimiro.mcpgateway.integration.rag;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
+import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;

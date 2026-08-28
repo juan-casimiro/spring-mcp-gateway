@@ -1,4 +1,4 @@
-package com.juancasimiro.mcpgateway.integration.rag;
+package com.juancasimiro.mcpgateway.integration.rag.exception;
 
 public final class RagTimeoutException extends RagException {
 

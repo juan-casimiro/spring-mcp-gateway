@@ -1,5 +1,6 @@
 package com.juancasimiro.mcpgateway.application.research;
 
+import com.juancasimiro.mcpgateway.application.research.exception.InvalidResearchQuestionException;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;

@@ -1,12 +1,12 @@
 package com.juancasimiro.mcpgateway.mcp;
 
-import com.juancasimiro.mcpgateway.application.research.InvalidResearchQuestionException;
 import com.juancasimiro.mcpgateway.application.research.ResearchAnswer;
 import com.juancasimiro.mcpgateway.application.research.ResearchGateway;
 import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
-import com.juancasimiro.mcpgateway.integration.rag.RagContractException;
-import com.juancasimiro.mcpgateway.integration.rag.RagTimeoutException;
-import com.juancasimiro.mcpgateway.integration.rag.RagUnavailableException;
+import com.juancasimiro.mcpgateway.application.research.exception.InvalidResearchQuestionException;
+import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractException;
+import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
+import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
 import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
