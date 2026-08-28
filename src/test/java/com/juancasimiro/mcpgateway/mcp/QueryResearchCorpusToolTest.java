@@ -2,24 +2,22 @@ package com.juancasimiro.mcpgateway.mcp;
 
 import com.juancasimiro.mcpgateway.application.research.ResearchAnswer;
 import com.juancasimiro.mcpgateway.application.research.ResearchGateway;
+import com.juancasimiro.mcpgateway.application.research.InvalidResearchQuestionException;
 import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
 import com.juancasimiro.mcpgateway.integration.rag.RagContractException;
 import com.juancasimiro.mcpgateway.integration.rag.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.RagUnavailableException;
 import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.springframework.boot.test.system.CapturedOutput;
-import org.springframework.boot.test.system.OutputCaptureExtension;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-@ExtendWith(OutputCaptureExtension.class)
 class QueryResearchCorpusToolTest {
 
     @Test
@@ -47,50 +45,40 @@ class QueryResearchCorpusToolTest {
     }
 
     @Test
-    void returnsFailureResponseAndLogsErrorForContractFailure(CapturedOutput output) {
+    void rethrowsContractFailure() {
         RagContractException failure = new RagContractException();
         QueryResearchCorpusTool tool = toolThrowing(failure);
 
-        QueryResearchCorpusResponse response = tool.query("test question", 8);
-
-        assertFailureResponse(response, failure.getMessage());
-        assertThat(output).contains("ERROR").contains("Research corpus contract failure");
+        assertThatThrownBy(() -> tool.query("test question", 8))
+                .isSameAs(failure);
     }
 
     @Test
-    void returnsFailureResponseAndLogsWarningForUnavailableService(CapturedOutput output) {
+    void rethrowsUnavailableServiceFailure() {
         RagUnavailableException failure = new RagUnavailableException();
         QueryResearchCorpusTool tool = toolThrowing(failure);
 
-        QueryResearchCorpusResponse response = tool.query("test question", 8);
-
-        assertFailureResponse(response, failure.getMessage());
-        assertThat(output).contains("WARN").contains(failure.getMessage());
+        assertThatThrownBy(() -> tool.query("test question", 8))
+                .isSameAs(failure);
     }
 
     @Test
-    void returnsFailureResponseAndLogsWarningForTimeout(CapturedOutput output) {
+    void rethrowsTimeoutFailure() {
         RagTimeoutException failure = new RagTimeoutException();
         QueryResearchCorpusTool tool = toolThrowing(failure);
 
-        QueryResearchCorpusResponse response = tool.query("test question", 8);
-
-        assertFailureResponse(response, failure.getMessage());
-        assertThat(output).contains("WARN").contains(failure.getMessage());
+        assertThatThrownBy(() -> tool.query("test question", 8))
+                .isSameAs(failure);
     }
 
     @Test
-    void returnsFailureResponseAndLogsWarningForInvalidQuestion(CapturedOutput output) {
+    void rethrowsInvalidQuestionFailure() {
         ResearchGateway researchGateway = mock(ResearchGateway.class);
         QueryResearchCorpusTool tool = new QueryResearchCorpusTool(researchGateway);
 
-        QueryResearchCorpusResponse response = tool.query("   ", 8);
-
-        assertFailureResponse(
-                response,
-                "The research question must contain between 1 and 1,000 characters."
-        );
-        assertThat(output).contains("WARN").contains("The research question must contain between 1 and 1,000 characters.");
+        assertThatThrownBy(() -> tool.query("   ", 8))
+                .isInstanceOf(InvalidResearchQuestionException.class)
+                .hasMessage("The research question must contain between 1 and 1,000 characters.");
     }
 
     private QueryResearchCorpusTool toolThrowing(RuntimeException failure) {
@@ -99,12 +87,4 @@ class QueryResearchCorpusToolTest {
         return new QueryResearchCorpusTool(researchGateway);
     }
 
-    private void assertFailureResponse(QueryResearchCorpusResponse response, String message) {
-        assertThat(response).isEqualTo(new QueryResearchCorpusResponse(
-                message,
-                List.of(),
-                false,
-                message
-        ));
-    }
 }

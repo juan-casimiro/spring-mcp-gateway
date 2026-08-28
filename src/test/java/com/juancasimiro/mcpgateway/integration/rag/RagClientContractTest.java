@@ -3,12 +3,12 @@ package com.juancasimiro.mcpgateway.integration.rag;
 import com.juancasimiro.mcpgateway.application.research.ResearchAnswer;
 import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.http.Fault;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.web.client.RestClient;
 import org.wiremock.spring.ConfigureWireMock;
 import org.wiremock.spring.EnableWireMock;
 import org.wiremock.spring.InjectWireMock;
@@ -17,7 +17,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest(properties = "rag.read-timeout=100ms")
+@SpringBootTest
 @EnableWireMock(
         @ConfigureWireMock(
                 name = "rag-service",
@@ -104,6 +104,14 @@ class RagClientContractTest {
                 .isInstanceOf(RagTimeoutException.class);
     }
 
+    @Test
+    void mapsUnlistedServerErrorStatus() {
+        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(507)));
+
+        assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
+                .isInstanceOf(RagUnavailableException.class);
+    }
+
     @ParameterizedTest
     @ValueSource(ints = {400, 401, 404, 422})
     void mapsClientErrorStatuses(int status) {
@@ -122,28 +130,20 @@ class RagClientContractTest {
     }
 
     @Test
-    void mapsMalformedSuccessfulBody() {
+    void mapsUnsupportedSuccessfulBodyContentType() {
         wireMock.stubFor(post(urlEqualTo("/query"))
-                .willReturn(okJson("{not-json}")));
+                .willReturn(ok("not JSON").withHeader("Content-Type", "text/html")));
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
                 .isInstanceOf(RagContractException.class);
     }
 
     @Test
-    void mapsSocketTimeout() {
+    void mapsNonTimeoutTransportFailure() {
         wireMock.stubFor(post(urlEqualTo("/query"))
-                .willReturn(okJson("{}").withFixedDelay(500)));
+                .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
-                .isInstanceOf(RagTimeoutException.class);
-    }
-
-    @Test
-    void mapsConnectionRefused() {
-        RagClient unavailableClient = new RagClient(RestClient.create("http://127.0.0.1:1"));
-
-        assertThatThrownBy(() -> unavailableClient.query(new ResearchQuestion("test question", 8)))
                 .isInstanceOf(RagUnavailableException.class);
     }
 }

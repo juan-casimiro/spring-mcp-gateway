@@ -14,8 +14,6 @@ import org.springframework.ai.mcp.annotation.McpTool;
 import org.springframework.ai.mcp.annotation.McpToolParam;
 import org.springframework.stereotype.Component;
 
-import java.util.List;
-
 @Component
 public class QueryResearchCorpusTool {
 
@@ -55,10 +53,10 @@ public class QueryResearchCorpusTool {
             return toResponse(answer);
         } catch (RagContractException exception) {
             LOGGER.error("Research corpus contract failure", exception);
-            return toFailureResponse(exception.getMessage());
+            throw exception;
         } catch (RagUnavailableException | RagTimeoutException | InvalidResearchQuestionException exception) {
             LOGGER.warn("Research corpus query failed: {}", exception.getMessage());
-            return toFailureResponse(exception.getMessage());
+            throw exception;
         }
     }
 
@@ -71,12 +69,4 @@ public class QueryResearchCorpusTool {
         );
     }
 
-    private QueryResearchCorpusResponse toFailureResponse(String message) {
-        return new QueryResearchCorpusResponse(
-                message,
-                List.of(),
-                false,
-                message
-        );
-    }
 }

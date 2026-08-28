@@ -6,12 +6,13 @@ import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
 import com.juancasimiro.mcpgateway.integration.rag.dto.RagQueryRequest;
 import com.juancasimiro.mcpgateway.integration.rag.dto.RagQueryResponse;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 
 @Component
@@ -34,23 +35,22 @@ public class RagClient implements ResearchGateway {
                     .body(request)
                     .retrieve()
                     .onStatus(HttpStatusCode::isError, (httpRequest, httpResponse) -> {
-                        int status = httpResponse.getStatusCode().value();
-                        if (status == 504) {
+                        HttpStatusCode statusCode = httpResponse.getStatusCode();
+                        if (statusCode.value() == HttpStatus.GATEWAY_TIMEOUT.value()) {
                             throw new RagTimeoutException();
                         }
-                        if (status >= 500 && status <= 503) {
+                        if (statusCode.is5xxServerError()) {
                             throw new RagUnavailableException();
                         }
                         throw new RagContractException();
                     })
                     .body(RagQueryResponse.class);
-        } catch (RestClientException exception) {
+        } catch (ResourceAccessException exception) {
             if (hasCause(exception, SocketTimeoutException.class)) {
                 throw new RagTimeoutException(exception);
             }
-            if (hasCause(exception, ConnectException.class)) {
-                throw new RagUnavailableException(exception);
-            }
+            throw new RagUnavailableException(exception);
+        } catch (RestClientException exception) {
             throw new RagContractException(exception);
         }
 
