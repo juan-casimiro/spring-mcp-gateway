@@ -1,0 +1,50 @@
+spring:
+  application:
+    name: spring-mcp-gateway
+  ai:
+    mcp:
+      server:
+        protocol: STREAMABLE
+
+management:
+  tracing:
+    sampling:
+      probability: 1.0
+    export:
+      otlp:
+        enabled: ${OTEL_TRACING_EXPORT_ENABLED:false}
+  otlp:
+    metrics:
+      export:
+        enabled: ${OTEL_METRICS_EXPORT_ENABLED:false}
+
+rag:
+  base-url: ${RAG_BASE_URL:http://localhost:8000}
+  connection-timeout: 4s
+  read-timeout: 60s
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      rag:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        slow-call-duration-threshold: 20s
+        slow-call-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 1
+        automatic-transition-from-open-to-half-open-enabled: false
+        record-exceptions:
+          - com.juancasimiro.mcpgateway.integration.rag.exception.RagException
+        ignore-exceptions:
+          - com.juancasimiro.mcpgateway.integration.rag.exception.RagContractException
+
+  retry:
+    instances:
+      rag:
+        max-attempts: 3
+        wait-duration: 1s
+        retry-exceptions:
+          - com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException

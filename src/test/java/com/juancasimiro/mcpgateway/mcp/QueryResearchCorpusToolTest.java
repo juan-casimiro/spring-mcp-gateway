@@ -8,6 +8,8 @@ import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractExceptio
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
 import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -79,6 +81,19 @@ class QueryResearchCorpusToolTest {
         assertThatThrownBy(() -> tool.query("   ", 8))
                 .isInstanceOf(InvalidResearchQuestionException.class)
                 .hasMessage("The research question must contain between 1 and 1,000 characters.");
+    }
+
+    @Test
+    void rethrowsBreakerOpenFailure() {
+        CircuitBreaker circuitBreaker = CircuitBreaker.ofDefaults("rag");
+        circuitBreaker.transitionToOpenState();
+        CallNotPermittedException failure = CallNotPermittedException.createCallNotPermittedException(
+                circuitBreaker
+        );
+        QueryResearchCorpusTool tool = toolThrowing(failure);
+
+        assertThatThrownBy(() -> tool.query("test question", 8))
+                .isSameAs(failure);
     }
 
     private QueryResearchCorpusTool toolThrowing(RuntimeException failure) {
