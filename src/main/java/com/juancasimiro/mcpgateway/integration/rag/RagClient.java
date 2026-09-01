@@ -8,6 +8,8 @@ import com.juancasimiro.mcpgateway.integration.rag.dto.RagQueryResponse;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -29,6 +31,8 @@ public class RagClient implements ResearchGateway {
     }
 
     @Override
+    @Retry(name = "rag")
+    @CircuitBreaker(name = "rag")
     public ResearchAnswer query(ResearchQuestion question) {
         RagQueryRequest request = toRequest(question);
 

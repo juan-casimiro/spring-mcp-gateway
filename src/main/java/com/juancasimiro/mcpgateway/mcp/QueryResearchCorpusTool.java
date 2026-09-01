@@ -8,6 +8,7 @@ import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractExceptio
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
 import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
@@ -56,6 +57,9 @@ public class QueryResearchCorpusTool {
             throw exception;
         } catch (RagUnavailableException | RagTimeoutException | InvalidResearchQuestionException exception) {
             LOGGER.warn("Research corpus query failed: {}", exception.getMessage());
+            throw exception;
+        } catch (CallNotPermittedException exception) {
+            LOGGER.warn("Research corpus circuit breaker is open: {}", exception.getMessage());
             throw exception;
         }
     }
