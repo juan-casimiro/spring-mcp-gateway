@@ -45,6 +45,8 @@ export RAG_BASE_URL=http://your-rag-service:8000
 ```
 
 The configured connection and read timeouts are `4s` and `60s`, respectively.
+The retry, circuit-breaker, fallback, and deferred bulkhead decisions are
+documented in [ADR-003](adr/003-resilience-policy.md).
 
 OTLP metric and trace export are disabled by default for local development. Enable them independently with:
 
