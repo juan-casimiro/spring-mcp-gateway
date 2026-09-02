@@ -31,7 +31,7 @@ class RagClientTimeoutContractTest {
     private RagClient ragClient;
 
     @Test
-    void mapsSocketTimeout() {
+    void mapsReadTimeoutToRagTimeoutException() {
         wireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(aResponse()
                         .withStatus(200)
@@ -44,8 +44,10 @@ class RagClientTimeoutContractTest {
                                   "insufficiency_reason": null
                                 }
                                 """)
-                        .withFixedDelay(500)));
+                        .withFixedDelay(500)));     // causes read timeout
 
+        // Exercises the configured HTTP request factory. If this fails after changing the factory,
+        // re-check timeout classification and retry behaviour before adapting the exception mapping.
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
                 .isInstanceOf(RagTimeoutException.class);
     }
