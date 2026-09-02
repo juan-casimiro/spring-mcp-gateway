@@ -9,7 +9,6 @@ import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractExceptio
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
 import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
-import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -85,7 +84,7 @@ class QueryResearchCorpusToolTest {
 
     @Test
     void rethrowsBreakerOpenFailure() {
-        RagCircuitOpenException failure = new RagCircuitOpenException(mock(CallNotPermittedException.class));
+        RagCircuitOpenException failure = new RagCircuitOpenException(new RuntimeException("circuit open"));
         QueryResearchCorpusTool tool = toolThrowing(failure);
 
         assertThatThrownBy(() -> tool.query("test question", 8))
