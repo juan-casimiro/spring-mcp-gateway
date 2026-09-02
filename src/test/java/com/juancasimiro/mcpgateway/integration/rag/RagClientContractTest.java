@@ -20,7 +20,11 @@ import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "resilience4j.circuitbreaker.instances.rag.sliding-window-size=100",
+        "resilience4j.circuitbreaker.instances.rag.minimum-number-of-calls=100",
+        "resilience4j.retry.instances.rag.max-attempts=1"
+})
 @EnableWireMock(
         @ConfigureWireMock(
                 name = "rag-service",
