@@ -2,6 +2,7 @@ package com.juancasimiro.mcpgateway.integration.rag;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
 import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
+import com.juancasimiro.mcpgateway.integration.rag.exception.RagCircuitOpenException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
@@ -25,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 @SpringBootTest(properties = {
+        "resilience4j.circuitbreaker.instances.rag.sliding-window-type=COUNT_BASED",
         "resilience4j.circuitbreaker.instances.rag.sliding-window-size=4",
         "resilience4j.circuitbreaker.instances.rag.minimum-number-of-calls=4",
         "resilience4j.circuitbreaker.instances.rag.failure-rate-threshold=50",
@@ -38,6 +40,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 )
 class RagClientResilienceTest {
 
+    private static final int EXPECTED_RETRY_ATTEMPTS = 3;
     private static final ResearchQuestion TEST_QUESTION =
             new ResearchQuestion("test resilience policy", 8);
 
@@ -70,17 +73,19 @@ class RagClientResilienceTest {
         assertThatThrownBy(() -> ragClient.query(TEST_QUESTION))
                 .isInstanceOf(RagUnavailableException.class);
 
-        wireMock.verify(3, postRequestedFor(urlEqualTo("/query")));
-        assertThat(circuitBreaker.getMetrics().getNumberOfFailedCalls()).isEqualTo(3);
+        wireMock.verify(EXPECTED_RETRY_ATTEMPTS, postRequestedFor(urlEqualTo("/query")));
+        assertThat(circuitBreaker.getMetrics().getNumberOfFailedCalls())
+                .as("each protected RAG attempt is recorded, including retries")
+                .isEqualTo(EXPECTED_RETRY_ATTEMPTS);
         assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
     }
 
     @Test
-    void doesNotRetryTimeoutFailures() {
+    void propagatesTechnicalFailureThroughToolWithoutRetryOrSuccessfulResponse() {
         wireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(aResponse().withStatus(504)));
 
-        assertThatThrownBy(() -> ragClient.query(TEST_QUESTION))
+        assertThatThrownBy(() -> queryResearchCorpusTool.query("test resilience policy", 8))
                 .isInstanceOf(RagTimeoutException.class);
 
         wireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
@@ -117,11 +122,13 @@ class RagClientResilienceTest {
     }
 
     @Test
-    void rethrowsBreakerOpenFailureWithoutCallingRagService() {
+    void translatesBreakerOpenFailureWithoutRetryingOrCallingRagService() {
         circuitBreaker.transitionToOpenState();
 
         assertThatThrownBy(() -> queryResearchCorpusTool.query("test resilience policy", 8))
-                .isInstanceOf(CallNotPermittedException.class);
+                .isInstanceOf(RagCircuitOpenException.class)
+                .hasMessage("The research service is temporarily unavailable because the circuit breaker is open.")
+                .hasCauseInstanceOf(CallNotPermittedException.class);
 
         wireMock.verify(0, postRequestedFor(urlEqualTo("/query")));
         assertThat(circuitBreaker.getMetrics().getNumberOfNotPermittedCalls()).isEqualTo(1);
