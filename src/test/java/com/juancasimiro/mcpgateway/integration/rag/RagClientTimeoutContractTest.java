@@ -44,7 +44,7 @@ class RagClientTimeoutContractTest {
                                   "insufficiency_reason": null
                                 }
                                 """)
-                        .withFixedDelay(500)));
+                        .withFixedDelay(500)));     // causes read timeout
 
         // Exercises the configured HTTP request factory. If this fails after changing the factory,
         // re-check timeout classification and retry behaviour before adapting the exception mapping.
