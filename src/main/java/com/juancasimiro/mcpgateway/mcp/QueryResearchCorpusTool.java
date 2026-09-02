@@ -4,11 +4,11 @@ import com.juancasimiro.mcpgateway.application.research.ResearchAnswer;
 import com.juancasimiro.mcpgateway.application.research.ResearchGateway;
 import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
 import com.juancasimiro.mcpgateway.application.research.exception.InvalidResearchQuestionException;
+import com.juancasimiro.mcpgateway.integration.rag.exception.RagCircuitOpenException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
 import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
-import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
@@ -55,11 +55,9 @@ public class QueryResearchCorpusTool {
         } catch (RagContractException exception) {
             LOGGER.error("Research corpus contract failure", exception);
             throw exception;
-        } catch (RagUnavailableException | RagTimeoutException | InvalidResearchQuestionException exception) {
+        } catch (RagUnavailableException | RagTimeoutException | RagCircuitOpenException |
+                 InvalidResearchQuestionException exception) {
             LOGGER.warn("Research corpus query failed: {}", exception.getMessage());
-            throw exception;
-        } catch (CallNotPermittedException exception) {
-            LOGGER.warn("Research corpus circuit breaker is open: {}", exception.getMessage());
             throw exception;
         }
     }
