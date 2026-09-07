@@ -36,7 +36,7 @@ not a measured saturation threshold, unless future evidence establishes one.
 The `rag` rate limiter applies to each downstream attempt at
 `RagClientRequestExecutor`, including retries. It is shared by all callers
 within one gateway process; it is neither per-client nor distributed.
-The default is 60 permits per minute, a configurable spend-backstop policy,
+The default is 30 permits every 30 seconds, a configurable spend-backstop policy,
 not a measured service-capacity or monetary-budget guarantee. Configure
 `RAG_RATE_LIMIT_FOR_PERIOD` and `RAG_RATE_LIMIT_REFRESH_PERIOD` to adjust it.
 Multiple gateway instances each have their own budget.

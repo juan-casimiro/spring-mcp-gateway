@@ -36,8 +36,8 @@ class ResilienceConfigurationTest {
     void loadsImmediateGlobalRagRateLimit() {
         var config = rateLimiterRegistry.rateLimiter("rag").getRateLimiterConfig();
 
-        assertThat(config.getLimitForPeriod()).isEqualTo(60);
-        assertThat(config.getLimitRefreshPeriod()).isEqualTo(Duration.ofMinutes(1));
+        assertThat(config.getLimitForPeriod()).isEqualTo(30);
+        assertThat(config.getLimitRefreshPeriod()).isEqualTo(Duration.ofSeconds(30));
         assertThat(config.getTimeoutDuration()).isEqualTo(Duration.ZERO);
         assertThat(rateLimiterRegistry.getAllRateLimiters())
                 .extracting(RateLimiter::getName)

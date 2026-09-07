@@ -53,6 +53,6 @@ resilience4j:
   ratelimiter:
     instances:
       rag:
-        limit-for-period: ${RAG_RATE_LIMIT_FOR_PERIOD:60}
-        limit-refresh-period: ${RAG_RATE_LIMIT_REFRESH_PERIOD:1m}
+        limit-for-period: ${RAG_RATE_LIMIT_FOR_PERIOD:30}
+        limit-refresh-period: ${RAG_RATE_LIMIT_REFRESH_PERIOD:30s}
         timeout-duration: 0
