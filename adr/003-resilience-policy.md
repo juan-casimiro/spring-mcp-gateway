@@ -30,3 +30,21 @@ bulkhead introduced separately would be an explicit policy boundary for
 bounded in-flight work, abuse protection, request storms, and/or paid LLM
 cost containment. Its configured value must be described as a policy choice,
 not a measured saturation threshold, unless future evidence establishes one.
+
+## Global request budget (JUA-72)
+
+The `rag` rate limiter applies to each downstream attempt at
+`RagClientRequestExecutor`, including retries. It is shared by all callers
+within one gateway process; it is neither per-client nor distributed.
+The default is 60 permits per minute, a configurable spend-backstop policy,
+not a measured service-capacity or monetary-budget guarantee. Configure
+`RAG_RATE_LIMIT_FOR_PERIOD` and `RAG_RATE_LIMIT_REFRESH_PERIOD` to adjust it.
+Multiple gateway instances each have their own budget.
+
+Permit acquisition uses zero timeout: exhausted requests fail immediately.
+The existing aspect order remains retry → circuit breaker → rate limiter.
+An open breaker therefore consumes no permit. `RequestNotPermitted` is
+explicitly ignored by the breaker (so rejection counts as neither success
+nor failure) and is outside the retry policy's `RagUnavailableException`
+allowlist. `RagClient` translates it to `RagRateLimitException`, alongside
+the existing circuit-open translation, before returning to callers.

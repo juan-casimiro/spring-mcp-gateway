@@ -7,6 +7,9 @@ import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.core.functions.Either;
+import io.github.resilience4j.ratelimiter.RateLimiter;
+import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryRegistry;
 import org.junit.jupiter.api.Test;
@@ -25,6 +28,31 @@ class ResilienceConfigurationTest {
 
     @Autowired
     private RetryRegistry retryRegistry;
+
+    @Autowired
+    private RateLimiterRegistry rateLimiterRegistry;
+
+    @Test
+    void loadsImmediateGlobalRagRateLimit() {
+        var config = rateLimiterRegistry.rateLimiter("rag").getRateLimiterConfig();
+
+        assertThat(config.getLimitForPeriod()).isEqualTo(60);
+        assertThat(config.getLimitRefreshPeriod()).isEqualTo(Duration.ofMinutes(1));
+        assertThat(config.getTimeoutDuration()).isEqualTo(Duration.ZERO);
+        assertThat(rateLimiterRegistry.getAllRateLimiters())
+                .extracting(RateLimiter::getName)
+                .containsExactly("rag");
+    }
+
+    @Test
+    void excludesPermitRejectionFromRetryAndBreakerStatistics() {
+        var rejection = RequestNotPermitted.createRequestNotPermitted(rateLimiterRegistry.rateLimiter("rag"));
+
+        assertThat(retryRegistry.retry("rag").getRetryConfig()
+                .getExceptionPredicate().test(rejection)).isFalse();
+        assertThat(circuitBreakerRegistry.circuitBreaker("rag").getCircuitBreakerConfig()
+                .getIgnoreExceptionPredicate().test(rejection)).isTrue();
+    }
 
     @Test
     void loadsRagCircuitBreakerConfiguration() {

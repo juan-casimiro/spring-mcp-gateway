@@ -8,6 +8,7 @@ import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractExceptio
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import io.github.resilience4j.retry.annotation.Retry;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
@@ -31,6 +32,7 @@ public class RagClientRequestExecutor {
 
     @Retry(name = "rag")
     @CircuitBreaker(name = "rag")
+    @RateLimiter(name = "rag")
     public ResearchAnswer query(ResearchQuestion question) {
         RagQueryRequest request = toRequest(question);
 
