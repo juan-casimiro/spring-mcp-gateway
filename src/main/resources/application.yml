@@ -39,6 +39,7 @@ resilience4j:
         record-exceptions:
           - com.juancasimiro.mcpgateway.integration.rag.exception.RagException
         ignore-exceptions:
+          - io.github.resilience4j.ratelimiter.RequestNotPermitted
           - com.juancasimiro.mcpgateway.integration.rag.exception.RagContractException
 
   retry:
@@ -48,3 +49,10 @@ resilience4j:
         wait-duration: 1s
         retry-exceptions:
           - com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException
+
+  ratelimiter:
+    instances:
+      rag:
+        limit-for-period: ${RAG_RATE_LIMIT_FOR_PERIOD:30}
+        limit-refresh-period: ${RAG_RATE_LIMIT_REFRESH_PERIOD:30s}
+        timeout-duration: 0

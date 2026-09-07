@@ -4,7 +4,9 @@ import com.juancasimiro.mcpgateway.application.research.ResearchAnswer;
 import com.juancasimiro.mcpgateway.application.research.ResearchGateway;
 import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagCircuitOpenException;
+import com.juancasimiro.mcpgateway.integration.rag.exception.RagRateLimitException;
 import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -22,6 +24,8 @@ public class RagClient implements ResearchGateway {
             return requestExecutor.query(question);
         } catch (CallNotPermittedException exception) {
             throw new RagCircuitOpenException(exception);
+        } catch (RequestNotPermitted exception) {
+            throw new RagRateLimitException(exception);
         }
     }
 }
