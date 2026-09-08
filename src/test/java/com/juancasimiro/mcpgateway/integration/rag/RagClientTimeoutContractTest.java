@@ -14,6 +14,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 
 @SpringBootTest(properties = "rag.read-timeout=200ms")
 @EnableWireMock(
@@ -49,6 +50,7 @@ class RagClientTimeoutContractTest {
         // Exercises the configured HTTP request factory. If this fails after changing the factory,
         // re-check timeout classification and retry behaviour before adapting the exception mapping.
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
-                .isInstanceOf(RagTimeoutException.class);
+                .isExactlyInstanceOf(RagTimeoutException.class);
+        wireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
     }
 }

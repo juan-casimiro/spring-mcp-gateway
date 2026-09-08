@@ -1,0 +1,3 @@
+# Raw reports/logs contain local paths and session data; commit portable summaries.
+*.xml
+*.log

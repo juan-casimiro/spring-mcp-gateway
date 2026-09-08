@@ -16,6 +16,7 @@
 	<properties>
 		<java.version>25</java.version>
 		<spring-ai.version>2.0.1</spring-ai.version>
+		<coverageArgLine></coverageArgLine>
 	</properties>
 	<dependencies>
 		<dependency>
@@ -110,12 +111,98 @@
 				<artifactId>maven-surefire-plugin</artifactId>
 				<configuration>
 					<!--suppress UnresolvedMavenProperty -->
-					<argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
+					<argLine>@{coverageArgLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
 				</configuration>
 			</plugin>
 		</plugins>
 	</build>
 	<profiles>
+		<!-- Diagnostic reports only: no numeric quality gates. -->
+		<profile>
+			<id>quality</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.jacoco</groupId>
+						<artifactId>jacoco-maven-plugin</artifactId>
+						<version>0.8.14</version>
+						<configuration>
+							<propertyName>coverageArgLine</propertyName>
+						</configuration>
+						<executions>
+							<execution>
+								<goals>
+									<goal>prepare-agent</goal>
+								</goals>
+							</execution>
+							<execution>
+								<id>coverage-report</id>
+								<phase>verify</phase>
+								<goals>
+									<goal>report</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-pmd-plugin</artifactId>
+						<version>3.28.0</version>
+						<configuration>
+							<rulesets>
+								<ruleset>quality/complexity.xml</ruleset>
+							</rulesets>
+							<includeTests>false</includeTests>
+							<linkXRef>false</linkXRef>
+						</configuration>
+						<executions>
+							<execution>
+								<phase>verify</phase>
+								<goals>
+									<goal>pmd</goal>
+								</goals>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+		<profile>
+			<id>mutation</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.pitest</groupId>
+						<artifactId>pitest-maven</artifactId>
+						<version>1.30.0</version>
+						<dependencies>
+							<dependency>
+								<groupId>org.pitest</groupId>
+								<artifactId>pitest-junit5-plugin</artifactId>
+								<version>1.2.3</version>
+							</dependency>
+						</dependencies>
+						<configuration>
+							<targetClasses>
+								<param>com.juancasimiro.mcpgateway.application.research.ResearchQuestion</param>
+								<param>com.juancasimiro.mcpgateway.integration.rag.RagClientRequestExecutor</param>
+								<param>com.juancasimiro.mcpgateway.mcp.QueryResearchCorpusTool</param>
+							</targetClasses>
+							<targetTests>
+								<param>com.juancasimiro.mcpgateway.*Test</param>
+							</targetTests>
+							<threads>1</threads>
+							<timeoutConstant>10000</timeoutConstant>
+							<timestampedReports>false</timestampedReports>
+							<outputFormats>
+								<param>HTML</param>
+								<param>XML</param>
+							</outputFormats>
+						</configuration>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
 		<profile>
 			<id>live-rag</id>
 			<build>
@@ -125,7 +212,7 @@
 						<artifactId>maven-failsafe-plugin</artifactId>
 						<configuration>
 							<!--suppress UnresolvedMavenProperty -->
-							<argLine>-javaagent:${org.mockito:mockito-core:jar}</argLine>
+							<argLine>@{coverageArgLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
 							<systemPropertyVariables>
 								<live.rag.enabled>true</live.rag.enabled>
 							</systemPropertyVariables>

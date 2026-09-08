@@ -7,6 +7,7 @@ import com.github.tomakehurst.wiremock.http.Fault;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -24,7 +25,8 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 @SpringBootTest(properties = {
         "resilience4j.circuitbreaker.instances.rag.sliding-window-size=100",
         "resilience4j.circuitbreaker.instances.rag.minimum-number-of-calls=100",
-        "resilience4j.retry.instances.rag.max-attempts=1"
+        "resilience4j.retry.instances.rag.max-attempts=1",
+        "resilience4j.ratelimiter.instances.rag.limit-for-period=10000"
 })
 @EnableWireMock(
         @ConfigureWireMock(
@@ -39,6 +41,11 @@ class RagClientContractTest {
 
     @Autowired
     private RagClient ragClient;
+
+    @BeforeEach
+    void resetHttpState() {
+        wireMock.resetAll();
+    }
 
     @Test
     void sendsQueryAndDeserializesResponse() {
@@ -55,7 +62,7 @@ class RagClientContractTest {
                 .willReturn(okJson("""
                         {
                           "answer": "CT-FFR estimates the functional significance of a coronary stenosis.",
-                          "sources": ["cardio-ct-ffr.pdf"],
+                          "sources": ["z-source.pdf", "a-source.pdf", "z-source.pdf", "b-source.pdf"],
                           "context_sufficient": true,
                           "insufficiency_reason": null
                         }
@@ -72,7 +79,7 @@ class RagClientContractTest {
         assertThat(response.answer())
                 .isEqualTo("CT-FFR estimates the functional significance of a coronary stenosis.");
         assertThat(response.sources())
-                .containsExactly("cardio-ct-ffr.pdf");
+                .containsExactly("z-source.pdf", "a-source.pdf", "z-source.pdf", "b-source.pdf");
         assertThat(response.contextSufficient()).isTrue();
         assertThat(response.insufficiencyReason()).isNull();
     }
@@ -127,6 +134,16 @@ class RagClientContractTest {
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
                 .isInstanceOf(RagContractException.class);
+    }
+
+    @Test
+    void mapsMalformedJsonAsContractFailure() {
+        wireMock.stubFor(post(urlEqualTo("/query"))
+                .willReturn(okJson("{\"answer\": broken json")));
+
+        assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
+                .isExactlyInstanceOf(RagContractException.class);
+        wireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
     }
 
     @Test
