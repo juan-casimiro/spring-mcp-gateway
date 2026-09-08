@@ -4,6 +4,15 @@ Use Java 25 and the Maven wrapper. These reports are opt-in measurements, not
 numeric build gates. No live RAG service, model downloads, LLM calls, or telemetry
 collector is needed. The default test suite remains `./mvnw test`.
 
+Python 3 is required only for `quality/summarize.py` and
+`quality/verify_effectiveness.py`. Both use only the Python standard library;
+Maven builds, tests, and JaCoCo/PMD/PIT runs do not require Python.
+
+The committed `quality/evidence` CSV/JSON files are snapshots for the original
+audit commit `8728fab`, not automatically refreshed results. There is currently
+no repository CI workflow running these checks. The commands below generate local
+reports under `target`; compare them with the snapshots and record any refresh explicitly.
+
 ## Coverage and complexity
 
 ```sh
@@ -16,7 +25,7 @@ python3 quality/summarize.py
 
 HTML reports: `target/site/jacoco/index.html` and `target/reports/pmd.html`.
 Machine-readable summaries: `target/quality/{coverage,complexity,hotspots}.csv`.
-Python uses only its standard library. The script rejects PMD analysis errors.
+The summarizer rejects PMD analysis errors.
 
 Versions: JaCoCo 0.8.14, Maven PMD plugin 3.28.0 / PMD 7.17.0. The PMD ruleset
 reports cyclomatic/cognitive complexity from 1 upward; these reporting levels
@@ -50,8 +59,15 @@ PIT 1.30.0 with its JUnit platform plugin 1.2.3 mutates `ResearchQuestion`,
 mutators and filters are retained. Reports are in `target/pit-reports`.
 Run separately from the quality profile to keep JaCoCo instrumentation out of PIT.
 
-This bounded scope targets validation, error classification, and tool mapping.
-It does not mutate YAML, remove annotations, reverse lists, or generally challenge
+The selected classes contain the main validation (`ResearchQuestion`), HTTP/transport
+classification (`RagClientRequestExecutor`), and MCP mapping (`QueryResearchCorpusTool`)
+logic. `RagClient` is deliberately outside the current mutation scope: it is a small
+delegating wrapper whose circuit-open and rate-limit exception translations are
+already exercised indirectly by Spring/WireMock resilience and rate-limit tests.
+That is behavioural coverage, not a claim that the wrapper has been mutation-tested;
+broader mutation coverage can be evaluated separately.
+
+PIT does not mutate YAML, remove annotations, reverse lists, or generally challenge
 logging calls. A 100% score is not evidence that those contracts are protected.
 Inspect every survivor and distinguish assertion failures from PIT timeouts or
 tool failures. PIT 1.19.4 was tried and rejected because it cannot read Java 25

@@ -25,7 +25,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 class RagClientTracingTest {
 
     @Autowired
-    private RagClient client;
+    private RagClient ragClient;
 
     @Autowired
     private Tracer tracer;
@@ -40,7 +40,7 @@ class RagClientTracingTest {
                 """)));
         Span parent = tracer.nextSpan().name("test-parent").start();
         try (Tracer.SpanInScope ignored = tracer.withSpan(parent)) {
-            assertThat(client.query(new ResearchQuestion("test trace", 8)).answer())
+            assertThat(ragClient.query(new ResearchQuestion("test trace", 8)).answer())
                     .isEqualTo("test traced answer");
         } finally {
             parent.end();

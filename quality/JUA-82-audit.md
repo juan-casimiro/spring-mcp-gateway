@@ -1,5 +1,17 @@
 # JUA-82 — Test coverage and effectiveness audit
 
+Baseline coverage was already **98.29% lines / 100% branches**, and default PIT
+already killed **24/24 mutants**. All three metrics were unchanged after this work.
+The main value is the behavioural gaps found and the verification-first checks
+that challenged assertion strength on code the suite already executed.
+
+The most instructive finding came from the first explicit-count challenge: an
+over-specific mock returned null for the wrong argument, so the test failed by
+**NPE rather than the intended assertion**. That evidence was rejected. The test
+was corrected to supply a response independently of arguments and verify the
+forwarded `ResearchQuestion`; the repeated challenge then failed at the intended
+argument assertion (8 instead of 3). A failing test alone was not sufficient proof.
+
 ## Scope and baseline
 
 Audited production code against all existing unit, Spring/WireMock, configuration,
@@ -58,7 +70,8 @@ the latter intentionally override delays/windows and cannot protect production d
   This audit adds malformed-JSON protection; it does not invent new required-field
   or domain-consistency rules or hide that remaining risk.
 * `RagRateLimitException` propagates but has no explicit log branch in the tool.
-  JUA-72 does not settle its logging severity; no new policy is inferred here.
+  JUA-72 did not define its logging severity. Choosing a severity and adding that
+  branch are follow-up policy work; this PR promises no production behaviour changes.
 
 ## Deliberate limits
 
@@ -73,6 +86,11 @@ delay and one-probe configuration remain pinned separately. Slow-call timing und
 load, concurrent half-open rejection, rate-period renewal, and real connect-timeout
 timing are not claimed by these tests. The exception/cause walk and real read-timeout
 tests protect classification without relying on unreachable network addresses.
+
+ADR-003 preserves retry → circuit breaker → rate limiter, but does not require
+explicit numeric aspect-order configuration. The existing interaction tests verify
+that behaviour; no inconsistency requiring a production change was found. Explicit
+ordering as dependency-upgrade hardening remains follow-up work, outside this PR.
 
 No production refactor or mandatory numeric threshold was warranted by this audit.
 
@@ -92,7 +110,7 @@ additional **behaviours**, mostly on lines already executed by earlier tests.
 The untouched entry-point `main` accounts for the two uncovered lines. Adding a
 test solely to invoke that delegation would not improve this assessment.
 
-An additional `STRONGER,INLINE_CONSTS` pass on the same classes killed **48/49**
+The original audit’s additional `STRONGER,INLINE_CONSTS` pass on the same classes killed **48/49**
 mutants (97.96%), with one survivor, no uncovered mutants and no timeout/error
 outcomes. The survivor is `InlineConstantMutator` at executor line 42:
 `Substituted 0 with 1`. Bytecode inspection shows `iconst_0; anewarray Object`
@@ -102,8 +120,8 @@ null slot does not change this fixed URI. Classified as **equivalent for this
 implementation**, not a missing assertion. No test or production refactor was
 added just to kill it. The raw score remains 48/49; it is not adjusted to 100%.
 [`evidence/mutation-summary.json`](evidence/mutation-summary.json) preserves the
-counts and exact survivor metadata. Full local HTML/XML output remains under
-`target/pit-reports` (the broader pass is the latest report).
+counts and exact survivor metadata. The latest local HTML/XML output under
+`target/pit-reports` belongs to the cleanup rerun described below.
 
 Hotspots (unchanged production code):
 
@@ -125,9 +143,29 @@ static-analysis gate or CI workflow was found; compilation and deterministic tes
 are the existing executable checks. `-Pquality clean verify` now also produces
 JaCoCo and diagnostic PMD reports and packages the application successfully.
 
-Portable before/after CSVs are under `evidence/`. The summarizer was independently
+The committed `quality/evidence` CSV/JSON files are snapshot evidence for the
+original audit changes in commit `8728fab` (baseline source `2bbf52c`), not a live
+quality dashboard. The repository currently has no CI workflow running these
+checks, so snapshots are not automatically refreshed. Later reruns must be recorded
+explicitly and compared with these snapshots.
+
+The summarizer was independently
 checked with known full/half/zero coverage examples (complexity 4 gives CRAP-style
 4/6/20), ordering checks, and a PMD analysis-error fixture that must be rejected.
+
+## Cleanup revalidation (2026-09-08)
+
+Both `./mvnw test` and `./mvnw -Pquality clean verify` pass all 62 tests.
+Fresh coverage, complexity, and CRAP-style CSVs exactly match the committed after
+snapshots. Default PIT again kills 24/24 mutants. The clean-build broader
+`STRONGER,INLINE_CONSTS` rerun kills **46/47** (97.87%), with the same equivalent
+URI-varargs survivor, now reported at executor line 41, and no uncovered or
+error/timeout outcomes. Compared with the historical XML, this run does not
+emit the two previously killed `ResearchQuestion` accessor mutants (`question`
+empty return and `resultCount` zero return). The cause of that generation difference
+is not established; the historical 48/49 snapshot is retained, not presented as
+the current result. No production source changes or metric-driven adjustments
+were made. The nine deliberate challenges below remain the original audit evidence.
 
 ## Verification-first evidence
 
@@ -148,8 +186,3 @@ Exact selectors, edits, hashes, exit codes, and failure messages are preserved i
 | Stop classifying 504 as timeout | Actual MCP error contains unavailable wording instead of timeout wording |
 | Force sufficient context true | MCP insufficient-context case reports true instead of false |
 | Replace injected builder with `RestClient.builder()` | WireMock request has no traceparent header |
-
-The first explicit-count challenge exposed an over-specific mock: wrong arguments
-returned null and raised an NPE. That result was **not** accepted as effectiveness
-evidence. The test now supplies a response independently of arguments and verifies
-the forwarded `ResearchQuestion`; the repeated challenge fails at that assertion.
