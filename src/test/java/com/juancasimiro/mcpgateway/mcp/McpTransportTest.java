@@ -36,28 +36,28 @@ class McpTransportTest {
     private int port;
 
     @InjectWireMock("rag-service")
-    private WireMockServer wireMock;
+    private WireMockServer ragWireMock;
 
-    private McpSyncClient client;
+    private McpSyncClient mcpClient;
 
     @BeforeEach
     void connect() {
-        wireMock.resetAll();
-        client = McpClient.sync(HttpClientStreamableHttpTransport.builder("http://localhost:" + port).build())
+        ragWireMock.resetAll();
+        mcpClient = McpClient.sync(HttpClientStreamableHttpTransport.builder("http://localhost:" + port).build())
                 .requestTimeout(Duration.ofSeconds(10)).build();
-        client.initialize();
+        mcpClient.initialize();
     }
 
     @AfterEach
     void disconnect() {
-        if (client != null) {
-            client.closeGracefully();
+        if (mcpClient != null) {
+            mcpClient.closeGracefully();
         }
     }
 
     @Test
     void discoversToolWithRequiredQuestionOptionalCountAndDocumentedBounds() {
-        assertThat(client.listTools().tools()).singleElement().satisfies(tool -> {
+        assertThat(mcpClient.listTools().tools()).singleElement().satisfies(tool -> {
             assertThat(tool.name()).isEqualTo("query_research_corpus");
             var schema = JsonMapper.builder().build().valueToTree(tool.inputSchema());
             assertThat(schema.get("required").toString()).isEqualTo("[\"question\"]");
@@ -75,7 +75,7 @@ class McpTransportTest {
                 {"answer":"test answer","sources":["z-source","a-source"],
                  "context_sufficient":%s,"insufficiency_reason":%s}
                 """.formatted(sufficient, reason == null ? "null" : "\"" + reason + "\"");
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(okJson(body)));
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(okJson(body)));
 
         var result = call(Map.of("question", "  test question  "));
 
@@ -89,7 +89,7 @@ class McpTransportTest {
         } else {
             assertThat(json.get("insufficiencyReason").asString()).isEqualTo(reason);
         }
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/query")).withRequestBody(equalToJson("""
+        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query")).withRequestBody(equalToJson("""
                 {"question":"test question","n_results":8,"use_bm25":false,"use_query_rewriting":false}
                 """)));
     }
@@ -101,7 +101,7 @@ class McpTransportTest {
             "422,The research service could not process this request. This is an internal error; do not retry with the same input."
     })
     void deliversTechnicalFailureAsSafeMcpToolError(int status, String message) {
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(status)
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(status)
                 .withBody("test upstream diagnostic that must not reach the caller")));
 
         var result = call(Map.of("question", "test question", "resultCount", 3));
@@ -109,7 +109,7 @@ class McpTransportTest {
         assertThat(result.isError()).isTrue();
         assertSafeError(result, message);
         assertThat(result.structuredContent()).isNull();
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/query"))
+        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query"))
                 .withRequestBody(matchingJsonPath("$.n_results", equalTo("3"))));
     }
 
@@ -119,7 +119,7 @@ class McpTransportTest {
 
         assertThat(result.isError()).isTrue();
         assertSafeError(result, "The result count must be between 1 and 20.");
-        wireMock.verify(0, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(0, postRequestedFor(urlEqualTo("/query")));
     }
 
     private void assertSafeError(McpSchema.CallToolResult result, String message) {
@@ -129,7 +129,7 @@ class McpTransportTest {
     }
 
     private McpSchema.CallToolResult call(Map<String, Object> arguments) {
-        return client.callTool(new McpSchema.CallToolRequest("query_research_corpus", arguments, null));
+        return mcpClient.callTool(new McpSchema.CallToolRequest("query_research_corpus", arguments, null));
     }
 
     private String text(McpSchema.CallToolResult result) {

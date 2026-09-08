@@ -26,14 +26,14 @@ import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 class RagClientTimeoutContractTest {
 
     @InjectWireMock("rag-service")
-    private WireMockServer wireMock;
+    private WireMockServer ragWireMock;
 
     @Autowired
     private RagClient ragClient;
 
     @Test
     void mapsReadTimeoutToRagTimeoutException() {
-        wireMock.stubFor(post(urlEqualTo("/query"))
+        ragWireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(aResponse()
                         .withStatus(200)
                         .withHeader("Content-Type", "application/json")
@@ -51,6 +51,6 @@ class RagClientTimeoutContractTest {
         // re-check timeout classification and retry behaviour before adapting the exception mapping.
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
                 .isExactlyInstanceOf(RagTimeoutException.class);
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
     }
 }

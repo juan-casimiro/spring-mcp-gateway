@@ -38,7 +38,7 @@ class RagClientRateLimitTest {
     private static final ResearchQuestion TEST_QUESTION = new ResearchQuestion("test rate limit", 8);
 
     @InjectWireMock("rag-service")
-    private WireMockServer wireMock;
+    private WireMockServer ragWireMock;
 
     @Autowired
     private RagClient ragClient;
@@ -51,7 +51,7 @@ class RagClientRateLimitTest {
 
     @Test
     void permitsCallsWithinLimitThenRejectsWithoutRetryOrBreakerStatistics() {
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(okJson("""
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(okJson("""
                 {"answer":"test answer","sources":[],"context_sufficient":true,"insufficiency_reason":null}
                 """)));
         AtomicInteger rejections = trackRejections();
@@ -60,19 +60,19 @@ class RagClientRateLimitTest {
         assertThat(ragClient.query(TEST_QUESTION).answer()).isEqualTo("test answer");
         assertRateLimitRejection();
 
-        wireMock.verify(2, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(2, postRequestedFor(urlEqualTo("/query")));
         assertThat(rejections).hasValue(1);
         assertBreakerCounts(2, 0);
     }
 
     @Test
     void retriesConsumePermitsAndStopWhenLimitIsExhausted() {
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(503)));
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(503)));
         AtomicInteger rejections = trackRejections();
 
         assertRateLimitRejection();
 
-        wireMock.verify(2, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(2, postRequestedFor(urlEqualTo("/query")));
         assertThat(rejections).hasValue(1);
         assertBreakerCounts(0, 2);
     }
@@ -85,7 +85,7 @@ class RagClientRateLimitTest {
         assertThatThrownBy(() -> ragClient.query(TEST_QUESTION))
                 .isInstanceOf(RagCircuitOpenException.class);
 
-        wireMock.verify(0, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(0, postRequestedFor(urlEqualTo("/query")));
         assertThat(rateLimiterRegistry.rateLimiter("rag").getMetrics().getAvailablePermissions())
                 .isEqualTo(2);
         assertThat(breaker.getMetrics().getNumberOfNotPermittedCalls()).isEqualTo(1);

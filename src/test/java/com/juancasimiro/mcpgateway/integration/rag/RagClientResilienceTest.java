@@ -52,7 +52,7 @@ class RagClientResilienceTest {
             new ResearchQuestion("test resilience policy", 8);
 
     @InjectWireMock("rag-service")
-    private WireMockServer wireMock;
+    private WireMockServer ragWireMock;
 
     @Autowired
     private RagClient ragClient;
@@ -70,7 +70,7 @@ class RagClientResilienceTest {
 
     @BeforeEach
     void resetResilienceState() {
-        wireMock.resetAll();
+        ragWireMock.resetAll();
         circuitBreaker = circuitBreakerRegistry.circuitBreaker("rag");
         circuitBreaker.reset();
     }
@@ -78,14 +78,14 @@ class RagClientResilienceTest {
     @ParameterizedTest
     @ValueSource(strings = {"Service is loading", "Startup failed: test dependency failure"})
     void retriesBothLoadingAndPermanentStartupFailuresWithinTheSameBudget(String detail) {
-        wireMock.stubFor(post(urlEqualTo("/query"))
+        ragWireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(aResponse().withStatus(503).withHeader("Content-Type", "application/json")
                         .withBody("{\"detail\":\"" + detail + "\"}")));
 
         assertThatThrownBy(() -> ragClient.query(TEST_QUESTION))
                 .isInstanceOf(RagUnavailableException.class);
 
-        wireMock.verify(EXPECTED_RETRY_ATTEMPTS, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(EXPECTED_RETRY_ATTEMPTS, postRequestedFor(urlEqualTo("/query")));
         assertThat(circuitBreaker.getMetrics().getNumberOfFailedCalls())
                 .as("each protected RAG attempt is recorded, including retries")
                 .isEqualTo(EXPECTED_RETRY_ATTEMPTS);
@@ -94,25 +94,25 @@ class RagClientResilienceTest {
 
     @Test
     void propagatesTechnicalFailureThroughToolWithoutRetryOrSuccessfulResponse() {
-        wireMock.stubFor(post(urlEqualTo("/query"))
+        ragWireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(aResponse().withStatus(504)));
 
         assertThatThrownBy(() -> queryResearchCorpusTool.query("test resilience policy", 8))
                 .isInstanceOf(RagTimeoutException.class);
 
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
         assertThat(circuitBreaker.getMetrics().getNumberOfFailedCalls()).isEqualTo(1);
     }
 
     @Test
     void doesNotRetryOrRecordContractFailures() {
-        wireMock.stubFor(post(urlEqualTo("/query"))
+        ragWireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(aResponse().withStatus(422)));
 
         assertThatThrownBy(() -> ragClient.query(TEST_QUESTION))
                 .isInstanceOf(RagContractException.class);
 
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
         assertThat(circuitBreaker.getMetrics().getNumberOfFailedCalls()).isZero();
         assertThat(circuitBreaker.getMetrics().getNumberOfSuccessfulCalls()).isZero();
         assertThat(circuitBreaker.getMetrics().getNumberOfNotPermittedCalls()).isZero();
@@ -120,7 +120,7 @@ class RagClientResilienceTest {
 
     @Test
     void opensBreakerAfterTheConfiguredFailureThreshold() {
-        wireMock.stubFor(post(urlEqualTo("/query"))
+        ragWireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(aResponse().withStatus(504)));
 
         for (int call = 0; call < 4; call++) {
@@ -130,7 +130,7 @@ class RagClientResilienceTest {
 
         assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
         assertThat(circuitBreaker.getMetrics().getNumberOfFailedCalls()).isEqualTo(4);
-        wireMock.verify(4, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(4, postRequestedFor(urlEqualTo("/query")));
     }
 
     @Test
@@ -142,15 +142,15 @@ class RagClientResilienceTest {
                 .hasMessage("The research service is temporarily unavailable because the circuit breaker is open.")
                 .hasCauseInstanceOf(CallNotPermittedException.class);
 
-        wireMock.verify(0, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(0, postRequestedFor(urlEqualTo("/query")));
         assertThat(circuitBreaker.getMetrics().getNumberOfNotPermittedCalls()).isEqualTo(1);
     }
     @Test
     void stopsRetryingAfterRecoveryAndCountsInsufficientContextAsSuccess() {
-        wireMock.stubFor(post(urlEqualTo("/query")).inScenario("recovery")
+        ragWireMock.stubFor(post(urlEqualTo("/query")).inScenario("recovery")
                 .whenScenarioStateIs(Scenario.STARTED).willSetStateTo("ready")
                 .willReturn(aResponse().withStatus(503)));
-        wireMock.stubFor(post(urlEqualTo("/query")).inScenario("recovery")
+        ragWireMock.stubFor(post(urlEqualTo("/query")).inScenario("recovery")
                 .whenScenarioStateIs("ready").willReturn(okJson("""
                         {"answer":"test insufficient answer","sources":["test source"],
                          "context_sufficient":false,"insufficiency_reason":"test missing evidence"}
@@ -160,7 +160,7 @@ class RagClientResilienceTest {
 
         assertThat(answer.contextSufficient()).isFalse();
         assertThat(answer.insufficiencyReason()).isEqualTo("test missing evidence");
-        wireMock.verify(2, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(2, postRequestedFor(urlEqualTo("/query")));
         assertThat(circuitBreaker.getMetrics().getNumberOfFailedCalls()).isEqualTo(1);
         assertThat(circuitBreaker.getMetrics().getNumberOfSuccessfulCalls()).isEqualTo(1);
         assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
@@ -172,13 +172,13 @@ class RagClientResilienceTest {
         // are independently pinned by ResilienceConfigurationTest.
         circuitBreaker.transitionToOpenState();
         circuitBreaker.transitionToHalfOpenState();
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(okJson("""
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(okJson("""
                 {"answer":"test recovered answer","sources":[],"context_sufficient":true}
                 """)));
 
         assertThat(ragClient.query(TEST_QUESTION).answer()).isEqualTo("test recovered answer");
 
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
         assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
     }
 
@@ -186,21 +186,21 @@ class RagClientResilienceTest {
     void reopensHalfOpenBreakerAfterOneTimeoutWithoutRetry() {
         circuitBreaker.transitionToOpenState();
         circuitBreaker.transitionToHalfOpenState();
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(504)));
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(504)));
 
         assertThatThrownBy(() -> ragClient.query(TEST_QUESTION)).isExactlyInstanceOf(RagTimeoutException.class);
 
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
         assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.OPEN);
     }
 
     @Test
     void malformedResponseDoesNotRetryOrAffectBreakerStatistics() {
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(okJson("{broken json")));
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(okJson("{broken json")));
 
         assertThatThrownBy(() -> ragClient.query(TEST_QUESTION)).isExactlyInstanceOf(RagContractException.class);
 
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
         assertThat(circuitBreaker.getMetrics().getNumberOfBufferedCalls()).isZero();
         assertThat(circuitBreaker.getState()).isEqualTo(CircuitBreaker.State.CLOSED);
     }
@@ -214,7 +214,7 @@ class RagClientResilienceTest {
         assertThatThrownBy(() -> queryResearchCorpusTool.query("test invalid count", 21))
                 .isExactlyInstanceOf(InvalidResearchQuestionException.class);
 
-        wireMock.verify(0, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(0, postRequestedFor(urlEqualTo("/query")));
         assertThat(circuitBreaker.getMetrics().getNumberOfBufferedCalls()).isZero();
         assertThat(rateLimiterRegistry.rateLimiter("rag").getMetrics().getAvailablePermissions())
                 .isEqualTo(permitsBefore);

@@ -31,11 +31,11 @@ class RagClientTracingTest {
     private Tracer tracer;
 
     @InjectWireMock("rag-service")
-    private WireMockServer wireMock;
+    private WireMockServer ragWireMock;
 
     @Test
     void propagatesCurrentTraceThroughTheConfiguredHttpClient() {
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(okJson("""
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(okJson("""
                 {"answer":"test traced answer","sources":[],"context_sufficient":true}
                 """)));
         Span parent = tracer.nextSpan().name("test-parent").start();
@@ -46,7 +46,7 @@ class RagClientTracingTest {
             parent.end();
         }
 
-        var requests = wireMock.findAll(postRequestedFor(urlEqualTo("/query")));
+        var requests = ragWireMock.findAll(postRequestedFor(urlEqualTo("/query")));
         assertThat(requests).singleElement().satisfies(request -> {
             String traceparent = request.getHeader("traceparent");
             assertThat(traceparent).matches("00-" + parent.context().traceId() + "-[0-9a-f]{16}-[0-9a-f]{2}");

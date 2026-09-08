@@ -37,19 +37,19 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 class RagClientContractTest {
 
     @InjectWireMock("rag-service")
-    private WireMockServer wireMock;
+    private WireMockServer ragWireMock;
 
     @Autowired
     private RagClient ragClient;
 
     @BeforeEach
     void resetHttpState() {
-        wireMock.resetAll();
+        ragWireMock.resetAll();
     }
 
     @Test
     void sendsQueryAndDeserializesResponse() {
-        wireMock.stubFor(post(urlEqualTo("/query"))
+        ragWireMock.stubFor(post(urlEqualTo("/query"))
                 .withHeader("Content-Type", containing("application/json"))
                 .withRequestBody(equalToJson("""
                         {
@@ -86,7 +86,7 @@ class RagClientContractTest {
 
     @Test
     void preservesInsufficientContextAsSuccessfulResponse() {
-        wireMock.stubFor(post(urlEqualTo("/query"))
+        ragWireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(okJson("""
                         {
                           "answer": "The corpus does not contain enough evidence.",
@@ -105,7 +105,7 @@ class RagClientContractTest {
     @ParameterizedTest
     @ValueSource(ints = {500, 502, 503})
     void mapsUnavailableStatuses(int status) {
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(status)));
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(status)));
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
                 .isInstanceOf(RagUnavailableException.class);
@@ -113,7 +113,7 @@ class RagClientContractTest {
 
     @Test
     void mapsGatewayTimeoutStatus() {
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(504)));
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(504)));
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
                 .isInstanceOf(RagTimeoutException.class);
@@ -121,7 +121,7 @@ class RagClientContractTest {
 
     @Test
     void mapsUnlistedServerErrorStatus() {
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(507)));
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(507)));
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
                 .isInstanceOf(RagUnavailableException.class);
@@ -130,7 +130,7 @@ class RagClientContractTest {
     @ParameterizedTest
     @ValueSource(ints = {400, 401, 404, 422})
     void mapsClientErrorStatuses(int status) {
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(status)));
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(aResponse().withStatus(status)));
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
                 .isInstanceOf(RagContractException.class);
@@ -138,17 +138,17 @@ class RagClientContractTest {
 
     @Test
     void mapsMalformedJsonAsContractFailure() {
-        wireMock.stubFor(post(urlEqualTo("/query"))
+        ragWireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(okJson("{\"answer\": broken json")));
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
                 .isExactlyInstanceOf(RagContractException.class);
-        wireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
+        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query")));
     }
 
     @Test
     void mapsEmptySuccessfulBody() {
-        wireMock.stubFor(post(urlEqualTo("/query")).willReturn(ok()));
+        ragWireMock.stubFor(post(urlEqualTo("/query")).willReturn(ok()));
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
                 .isInstanceOf(RagContractException.class);
@@ -156,7 +156,7 @@ class RagClientContractTest {
 
     @Test
     void mapsUnsupportedSuccessfulBodyContentType() {
-        wireMock.stubFor(post(urlEqualTo("/query"))
+        ragWireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(ok("not JSON").withHeader("Content-Type", "text/html")));
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
@@ -165,7 +165,7 @@ class RagClientContractTest {
 
     @Test
     void mapsNonTimeoutTransportFailure() {
-        wireMock.stubFor(post(urlEqualTo("/query"))
+        ragWireMock.stubFor(post(urlEqualTo("/query"))
                 .willReturn(aResponse().withFault(Fault.CONNECTION_RESET_BY_PEER)));
 
         assertThatThrownBy(() -> ragClient.query(new ResearchQuestion("test question", 8)))
