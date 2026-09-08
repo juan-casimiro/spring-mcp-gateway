@@ -8,8 +8,9 @@ Python 3 is required only for `quality/summarize.py` and
 `quality/verify_effectiveness.py`. Both use only the Python standard library;
 Maven builds, tests, and JaCoCo/PMD/PIT runs do not require Python.
 
-The committed `quality/evidence` CSV/JSON files are snapshots for the original
-audit commit `8728fab`, not automatically refreshed results. There is currently
+The committed `quality/evidence` CSV/JSON files contain the original
+audit snapshots (`8728fab`) and the separately labelled `mutation-rerun.json`
+investigation evidence. They are not automatically refreshed results. There is currently
 no repository CI workflow running these checks. The commands below generate local
 reports under `target`; compare them with the snapshots and record any refresh explicitly.
 
@@ -48,9 +49,9 @@ definitions separate. Coverage and CRAP cannot establish assertion strength.
 ## Focused mutation analysis
 
 ```sh
-./mvnw -Pmutation test-compile pitest:mutationCoverage
+./mvnw -Pmutation clean test-compile pitest:mutationCoverage
 # Broader diagnostic pass on the same three classes:
-./mvnw -Pmutation -Dmutators=STRONGER,INLINE_CONSTS test-compile pitest:mutationCoverage
+./mvnw -Pmutation -Dmutators=STRONGER,INLINE_CONSTS clean test-compile pitest:mutationCoverage
 ```
 
 PIT 1.30.0 with its JUnit platform plugin 1.2.3 mutates `ResearchQuestion`,
@@ -58,6 +59,17 @@ PIT 1.30.0 with its JUnit platform plugin 1.2.3 mutates `ResearchQuestion`,
 `*Test` classes. `RagClientIT` is excluded by that selection. PIT's default
 mutators and filters are retained. Reports are in `target/pit-reports`.
 Run separately from the quality profile to keep JaCoCo instrumentation out of PIT.
+
+Historical broader PIT: **48/49 killed**, retained in `evidence/mutation-summary.json`.
+Current broader PIT from two clean runs: **46/47 killed**, with the same equivalent
+URI-varargs survivor; final clean default PIT: **24/24 killed**. Current toolchain,
+counts, exact survivor/missing-accessor metadata and XML hashes are recorded in
+`evidence/mutation-rerun.json`. PIT's default record filter suppresses the current
+line-5 generated accessors; a diagnostic filter-disabled run restores and kills
+them. The historical XML reports accessor lines 6/7, but the provenance of that
+bytecode remains unresolved. See the audit's discrepancy investigation for the
+confirmed mechanism, diagnostic results and limits. Use `clean` to avoid reusing
+class files from an unknown compiler; preserve reports before it removes `target`.
 
 The selected classes contain the main validation (`ResearchQuestion`), HTTP/transport
 classification (`RagClientRequestExecutor`), and MCP mapping (`QueryResearchCorpusTool`)
