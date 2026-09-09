@@ -69,6 +69,95 @@ Run the gateway after starting the FastAPI RAG service:
 ./mvnw spring-boot:run
 ```
 
+## Docker
+
+Docker with BuildKit is the only build prerequisite; no local Java, Maven cache,
+or prebuilt `target/` directory is needed. From the repository root:
+
+```bash
+docker build --pull -t spring-mcp-gateway:local .
+```
+
+The builder uses Java 25 and the Maven Wrapper, then extracts the JAR with
+[Spring Boot 4.1 tools mode](https://docs.spring.io/spring-boot/reference/packaging/container-images/dockerfiles.html).
+The runtime contains a Java 25 JRE, curl for health probes, and separate Boot
+dependency/application layers. It runs as UID/GID `10001:10001`; application
+files are root-owned. Java runs as PID 1 and receives Docker stop signals directly.
+
+BuildKit caches Maven downloads across source changes. Wrapper/POM inputs are
+copied before source files, and stable dependency layers precede application
+code. Builds also work with an empty cache. The Java 25 Ubuntu Noble base tags
+receive updates; `--pull` refreshes them. These are repeatable source builds,
+not a promise of byte-identical images across base-image updates. No platform is
+hardcoded; Docker selects the base image for the target architecture.
+
+Image packaging skips test execution; run `./mvnw clean test` separately before
+using the image. The Docker build context includes only the Maven build inputs
+and source tree, excluding local build outputs, Git history, and `.env` files.
+Never place credentials in source resources or pass secrets as build arguments.
+
+### Run and configure
+
+Set `RAG_BASE_URL` to an address reachable **from the container**:
+
+```bash
+docker run -d --name mcp-gateway \
+  -p 127.0.0.1:8080:8080 \
+  -e RAG_BASE_URL=http://rag-service:8000 \
+  spring-mcp-gateway:local
+```
+
+Replace `rag-service` with your upstream hostname. For another container, attach
+both containers to the same user-defined Docker network (`--network <network>`)
+and use the upstream container's network name. For a service on the host, Docker
+Desktop provides `host.docker.internal`; on Linux Docker Engine, add
+`--add-host=host.docker.internal:host-gateway` and ensure the upstream listens on
+an interface reachable from Docker. The existing `localhost:8000` application
+default refers to the gateway container itself and will not reach a separate RAG
+service. Multi-service setup is deferred to JUA-66.
+
+All Spring configuration remains external through environment variables, such
+as `RAG_BASE_URL`, `RAG_RATE_LIMIT_FOR_PERIOD`, `OTEL_TRACING_EXPORT_ENABLED`, and
+`SERVER_PORT`. Use `JAVA_TOOL_OPTIONS` for JVM options. Future secrets should be
+injected at runtime using your deployment's secret mechanism; Spring config-tree
+imports can read mounted secret files. Do not bake them into the image.
+
+The default container port is `8080`. If changing ports or the Actuator path,
+adjust the port mapping and set `HEALTHCHECK_URL` to the **internal** health URL:
+
+```bash
+docker run -d --name mcp-gateway-custom \
+  -p 127.0.0.1:8081:9090 \
+  -e SERVER_PORT=9090 \
+  -e HEALTHCHECK_URL=http://localhost:9090/actuator/health \
+  -e RAG_BASE_URL=http://rag-service:8000 \
+  spring-mcp-gateway:local
+```
+
+### Verify and stop
+
+```bash
+docker logs mcp-gateway
+curl --fail http://localhost:8080/actuator/health
+docker inspect --format '{{.State.Health.Status}}' mcp-gateway
+docker exec mcp-gateway id
+```
+
+Expect a JSON health response with `"status":"UP"`, Docker health `healthy` after the first successful
+probe, and UID/GID `10001`. The probe runs every 30 seconds, permits 30 seconds
+for startup, and marks the container unhealthy after three consecutive failures.
+It uses a four-second HTTP timeout and fails on HTTP errors or connection errors.
+Docker health status does not itself restart the container.
+
+Actuator health reports gateway health; it does not verify RAG reachability or
+perform paid retrieval/LLM calls. Use the MCP Inspector flow below against
+`http://localhost:8080/mcp` to verify a real upstream query separately.
+
+```bash
+docker stop mcp-gateway
+docker rm mcp-gateway
+```
+
 ## Verify with MCP Inspector
 
 1. Start `ai-research-assistant` by following its linked README above.
