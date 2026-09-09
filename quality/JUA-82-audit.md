@@ -20,8 +20,6 @@ tool, and opt-in live tests before changing assertions. Starting revision:
 46 deterministic tests passed with Temurin 25.0.4 and Maven 3.9.16. The shell's
 default Java 21 cannot compile this project; all reported successful runs use 25.
 
-Read the current Linear Working Agreement and repository guide, JUA-82, and the
-completed issue descriptions and relevant comments for JUA-48/49/50/51/56/57/58/59/72/78.
 Settled amendments take precedence over obsolete implementation prompts:
 timeouts are separate from retryable unavailability; failures are MCP errors;
 breaker accounting counts HTTP attempts; rate limiting applies per attempt;
