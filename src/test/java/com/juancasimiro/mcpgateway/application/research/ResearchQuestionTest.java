@@ -18,7 +18,7 @@ class ResearchQuestionTest {
     @Test
     void acceptsBoundaryValues() {
         assertThat(new ResearchQuestion("a", 1).question()).isEqualTo("a");
-        assertThat(new ResearchQuestion("a".repeat(1_000), 20).question()).hasSize(1_000);
+        assertThat(new ResearchQuestion("  " + "a".repeat(1_000) + "  ", 20).question()).hasSize(1_000);
     }
 
     @Test

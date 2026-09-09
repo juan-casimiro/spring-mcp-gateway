@@ -1,0 +1,360 @@
+{
+  "source_revision": "cb7efb687cc5dd1c28ea1c3583c03b8d8b241d57",
+  "date": "2026-09-08",
+  "toolchain": {
+    "java_version": [
+      "openjdk version \"25.0.4\" 2026-07-21 LTS",
+      "OpenJDK Runtime Environment Temurin-25.0.4+7 (build 25.0.4+7-LTS)",
+      "OpenJDK 64-Bit Server VM Temurin-25.0.4+7 (build 25.0.4+7-LTS, mixed mode, sharing)"
+    ],
+    "javac_version": "javac 25.0.4",
+    "maven_version": [
+      "Apache Maven 3.9.16 (2bdd9fddda4b155ebf8000e807eb73fd829a51d5)"
+    ],
+    "pit": "1.30.0",
+    "pit_junit5_plugin": "1.2.3",
+    "maven_compiler_plugin": "3.15.0",
+    "compiler_options": "javac debug parameters release 25",
+    "os": "macOS 26.6.2 aarch64",
+    "locale": "en_GB",
+    "encoding": "UTF-8"
+  },
+  "historical": {
+    "xml_sha256": "9ca12746039790ffd5f2f80da27653fe79b3f3f9b5349830f6cc050246dd2682",
+    "total": 49,
+    "statuses": {
+      "KILLED": 48,
+      "SURVIVED": 1
+    },
+    "non_killed": [
+      {
+        "detected": "false",
+        "status": "SURVIVED",
+        "numberOfTestsRun": "35",
+        "sourceFile": "RagClientRequestExecutor.java",
+        "mutatedClass": "com.juancasimiro.mcpgateway.integration.rag.RagClientRequestExecutor",
+        "mutatedMethod": "query",
+        "methodDescription": "(Lcom/juancasimiro/mcpgateway/application/research/ResearchQuestion;)Lcom/juancasimiro/mcpgateway/application/research/ResearchAnswer;",
+        "lineNumber": "42",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.InlineConstantMutator",
+        "indexes": [
+          "15"
+        ],
+        "blocks": [
+          "2"
+        ],
+        "killingTest": null,
+        "description": "Substituted 0 with 1"
+      }
+    ]
+  },
+  "initial_clean_broader": {
+    "xml_sha256": "e78923ae0e0142c31adf0207ef779dd0137663c8d3def0647f0bf168b81fb619",
+    "total": 47,
+    "statuses": {
+      "KILLED": 46,
+      "SURVIVED": 1
+    },
+    "non_killed": [
+      {
+        "detected": "false",
+        "status": "SURVIVED",
+        "numberOfTestsRun": "35",
+        "sourceFile": "RagClientRequestExecutor.java",
+        "mutatedClass": "com.juancasimiro.mcpgateway.integration.rag.RagClientRequestExecutor",
+        "mutatedMethod": "query",
+        "methodDescription": "(Lcom/juancasimiro/mcpgateway/application/research/ResearchQuestion;)Lcom/juancasimiro/mcpgateway/application/research/ResearchAnswer;",
+        "lineNumber": "41",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.InlineConstantMutator",
+        "indexes": [
+          "13"
+        ],
+        "blocks": [
+          "2"
+        ],
+        "killingTest": null,
+        "description": "Substituted 0 with 1"
+      }
+    ],
+    "command": "./mvnw -Pmutation -Dmutators=STRONGER,INLINE_CONSTS clean test-compile pitest:mutationCoverage"
+  },
+  "historically_present_currently_absent": [
+    {
+      "detected": "true",
+      "status": "KILLED",
+      "numberOfTestsRun": "1",
+      "sourceFile": "ResearchQuestion.java",
+      "mutatedClass": "com.juancasimiro.mcpgateway.application.research.ResearchQuestion",
+      "mutatedMethod": "question",
+      "methodDescription": "()Ljava/lang/String;",
+      "lineNumber": "6",
+      "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.EmptyObjectReturnValsMutator",
+      "indexes": [
+        "5"
+      ],
+      "blocks": [
+        "0"
+      ],
+      "killingTest": "com.juancasimiro.mcpgateway.application.research.ResearchQuestionTest.[engine:junit-jupiter]/[class:com.juancasimiro.mcpgateway.application.research.ResearchQuestionTest]/[method:trimsQuestion()]",
+      "description": "replaced return value with \"\" for com/juancasimiro/mcpgateway/application/research/ResearchQuestion::question"
+    },
+    {
+      "detected": "true",
+      "status": "KILLED",
+      "numberOfTestsRun": "22",
+      "sourceFile": "ResearchQuestion.java",
+      "mutatedClass": "com.juancasimiro.mcpgateway.application.research.ResearchQuestion",
+      "mutatedMethod": "resultCount",
+      "methodDescription": "()I",
+      "lineNumber": "7",
+      "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.PrimitiveReturnsMutator",
+      "indexes": [
+        "5"
+      ],
+      "blocks": [
+        "0"
+      ],
+      "killingTest": "com.juancasimiro.mcpgateway.mcp.McpTransportTest.[engine:junit-jupiter]/[class:com.juancasimiro.mcpgateway.mcp.McpTransportTest]/[test-template:deliversTechnicalFailureAsSafeMcpToolError(int, java.lang.String)]/[test-template-invocation:#2]",
+      "description": "replaced int return with 0 for com/juancasimiro/mcpgateway/application/research/ResearchQuestion::resultCount"
+    }
+  ],
+  "currently_present_historically_absent": [],
+  "comparison_identity": [
+    "mutatedClass",
+    "mutatedMethod",
+    "methodDescription",
+    "mutator",
+    "description"
+  ],
+  "comparison_note": "Compare multisets, preserving duplicate counts, after explicitly pairing executor lambda$1 (historical) with lambda$query$0 (current): same HTTP-status lambda descriptor and four conditional mutants. Source lines, bytecode indexes, blocks and generated lambda names differ across builds; exact missing/survivor metadata is preserved.",
+  "diagnostic_filter_disabled": {
+    "command": "./mvnw -Pmutation -Dmutators=STRONGER,INLINE_CONSTS -Dfeatures=-FRECORD test-compile pitest:mutationCoverage",
+    "xml_sha256": "c4ac62512c3fb81609b342d2be69d0bbc17388c7f772f1c7f3a037e2b563bbe9",
+    "total": 53,
+    "statuses": {
+      "KILLED": 49,
+      "NO_COVERAGE": 2,
+      "SURVIVED": 2
+    },
+    "non_killed": [
+      {
+        "detected": "false",
+        "status": "SURVIVED",
+        "numberOfTestsRun": "35",
+        "sourceFile": "RagClientRequestExecutor.java",
+        "mutatedClass": "com.juancasimiro.mcpgateway.integration.rag.RagClientRequestExecutor",
+        "mutatedMethod": "query",
+        "methodDescription": "(Lcom/juancasimiro/mcpgateway/application/research/ResearchQuestion;)Lcom/juancasimiro/mcpgateway/application/research/ResearchAnswer;",
+        "lineNumber": "41",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.InlineConstantMutator",
+        "indexes": [
+          "13"
+        ],
+        "blocks": [
+          "2"
+        ],
+        "killingTest": null,
+        "description": "Substituted 0 with 1"
+      },
+      {
+        "detected": "false",
+        "status": "SURVIVED",
+        "numberOfTestsRun": "6",
+        "sourceFile": "ResearchQuestion.java",
+        "mutatedClass": "com.juancasimiro.mcpgateway.application.research.ResearchQuestion",
+        "mutatedMethod": "equals",
+        "methodDescription": "(Ljava/lang/Object;)Z",
+        "lineNumber": "5",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.BooleanTrueReturnValsMutator",
+        "indexes": [
+          "6"
+        ],
+        "blocks": [
+          "0"
+        ],
+        "killingTest": null,
+        "description": "replaced boolean return with true for com/juancasimiro/mcpgateway/application/research/ResearchQuestion::equals"
+      },
+      {
+        "detected": "false",
+        "status": "NO_COVERAGE",
+        "numberOfTestsRun": "0",
+        "sourceFile": "ResearchQuestion.java",
+        "mutatedClass": "com.juancasimiro.mcpgateway.application.research.ResearchQuestion",
+        "mutatedMethod": "hashCode",
+        "methodDescription": "()I",
+        "lineNumber": "5",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.PrimitiveReturnsMutator",
+        "indexes": [
+          "5"
+        ],
+        "blocks": [
+          "0"
+        ],
+        "killingTest": null,
+        "description": "replaced int return with 0 for com/juancasimiro/mcpgateway/application/research/ResearchQuestion::hashCode"
+      },
+      {
+        "detected": "false",
+        "status": "NO_COVERAGE",
+        "numberOfTestsRun": "0",
+        "sourceFile": "ResearchQuestion.java",
+        "mutatedClass": "com.juancasimiro.mcpgateway.application.research.ResearchQuestion",
+        "mutatedMethod": "toString",
+        "methodDescription": "()Ljava/lang/String;",
+        "lineNumber": "5",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.EmptyObjectReturnValsMutator",
+        "indexes": [
+          "5"
+        ],
+        "blocks": [
+          "0"
+        ],
+        "killingTest": null,
+        "description": "replaced return value with \"\" for com/juancasimiro/mcpgateway/application/research/ResearchQuestion::toString"
+      }
+    ],
+    "accessors": [
+      {
+        "detected": "true",
+        "status": "KILLED",
+        "numberOfTestsRun": "1",
+        "sourceFile": "ResearchQuestion.java",
+        "mutatedClass": "com.juancasimiro.mcpgateway.application.research.ResearchQuestion",
+        "mutatedMethod": "question",
+        "methodDescription": "()Ljava/lang/String;",
+        "lineNumber": "5",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.EmptyObjectReturnValsMutator",
+        "indexes": [
+          "5"
+        ],
+        "blocks": [
+          "0"
+        ],
+        "killingTest": "com.juancasimiro.mcpgateway.application.research.ResearchQuestionTest.[engine:junit-jupiter]/[class:com.juancasimiro.mcpgateway.application.research.ResearchQuestionTest]/[method:trimsQuestion()]",
+        "description": "replaced return value with \"\" for com/juancasimiro/mcpgateway/application/research/ResearchQuestion::question"
+      },
+      {
+        "detected": "true",
+        "status": "KILLED",
+        "numberOfTestsRun": "25",
+        "sourceFile": "ResearchQuestion.java",
+        "mutatedClass": "com.juancasimiro.mcpgateway.application.research.ResearchQuestion",
+        "mutatedMethod": "resultCount",
+        "methodDescription": "()I",
+        "lineNumber": "5",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.returns.PrimitiveReturnsMutator",
+        "indexes": [
+          "5"
+        ],
+        "blocks": [
+          "0"
+        ],
+        "killingTest": "com.juancasimiro.mcpgateway.mcp.McpTransportTest.[engine:junit-jupiter]/[class:com.juancasimiro.mcpgateway.mcp.McpTransportTest]/[test-template:deliversTechnicalFailureAsSafeMcpToolError(int, java.lang.String)]/[test-template-invocation:#3]",
+        "description": "replaced int return with 0 for com/juancasimiro/mcpgateway/application/research/ResearchQuestion::resultCount"
+      }
+    ]
+  },
+  "conclusion": {
+    "confirmed": "PIT 1.30.0 FRECORD filters methods on the earliest single-line method location. Current javac accessors and generated Object methods share line 5; historical accessor mutants report lines 6 and 7. Disabling FRECORD restores both accessor mutants and existing tests kill them.",
+    "unresolved": "Origin of historical bytecode line metadata; historical run skipped compilation, and its class files/compiler invocation were not preserved. Historical lambda$1 versus current lambda$query$0 also confirms differing generated bytecode metadata; it does not identify the historical compiler.",
+    "jdk_check": "Standalone javac -g -parameters on unchanged ResearchQuestion and its exception under both installed Temurin 25.0.1 and 25.0.4 puts both accessors on line 5. This does not establish which compiler produced the historical run.",
+    "build_history_check": "Initial clean run recompiles all 19 production and 12 test files. No PIT history configuration is present in pom.xml and no history/cache option was passed. Diagnostic FRECORD toggle changes generation without a source change. No caches were deleted."
+  },
+  "generated_method_mapping": {
+    "historical": "RagClientRequestExecutor.lambda$1",
+    "current": "RagClientRequestExecutor.lambda$query$0",
+    "descriptor": "(Lorg/springframework/http/HttpRequest;Lorg/springframework/http/client/ClientHttpResponse;)V",
+    "matching_mutants": 4
+  },
+  "final_clean_default": {
+    "command": "./mvnw -Pmutation clean test-compile pitest:mutationCoverage",
+    "xml_sha256": "4fe04d7e9794bacbf553cbba4f4766c6cb4fdc7fe2044a0ffde1b569731f2ec1",
+    "total": 24,
+    "statuses": {
+      "KILLED": 24
+    },
+    "non_killed": []
+  },
+  "final_clean_broader": {
+    "command": "./mvnw -Pmutation -Dmutators=STRONGER,INLINE_CONSTS clean test-compile pitest:mutationCoverage",
+    "xml_sha256": "5648531bd31ec4ad6e011699e69c9a3468099190c64ccdaefba8d972954d8008",
+    "total": 47,
+    "statuses": {
+      "KILLED": 46,
+      "SURVIVED": 1
+    },
+    "non_killed": [
+      {
+        "detected": "false",
+        "status": "SURVIVED",
+        "numberOfTestsRun": "35",
+        "sourceFile": "RagClientRequestExecutor.java",
+        "mutatedClass": "com.juancasimiro.mcpgateway.integration.rag.RagClientRequestExecutor",
+        "mutatedMethod": "query",
+        "methodDescription": "(Lcom/juancasimiro/mcpgateway/application/research/ResearchQuestion;)Lcom/juancasimiro/mcpgateway/application/research/ResearchAnswer;",
+        "lineNumber": "41",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.InlineConstantMutator",
+        "indexes": [
+          "13"
+        ],
+        "blocks": [
+          "2"
+        ],
+        "killingTest": null,
+        "description": "Substituted 0 with 1"
+      }
+    ]
+  },
+  "current_class_sha256": {
+    "com/juancasimiro/mcpgateway/application/research/ResearchQuestion.class": "87d863ae970a3ee82fe55bad3c387988a0f91fb4ff886d4f695b1c910dbd99fc",
+    "com/juancasimiro/mcpgateway/integration/rag/RagClientRequestExecutor.class": "4c3456b607ae66d6a399429767aedaa32732d74eac0e8dc87984148d75decb47",
+    "com/juancasimiro/mcpgateway/mcp/QueryResearchCorpusTool.class": "caf0e806e120849ea901de498a778e7de9f8d5739cf59b697bb95b4961e438de"
+  },
+  "production_source_sha256": {
+    "src/main/java/com/juancasimiro/mcpgateway/SpringMcpGatewayApplication.java": "e1b1cb7ef2666dd6b38eb641129c874a994f5bcc02de7c14fd2c48a2ecb2b737",
+    "src/main/java/com/juancasimiro/mcpgateway/application/research/ResearchAnswer.java": "ededbc6bf97bc3b0a5b027db815a21e1576d1c8a776fbf9c7c0dc7acab32240a",
+    "src/main/java/com/juancasimiro/mcpgateway/application/research/ResearchGateway.java": "6e2186e399063610502f16dae0cec657b98062847981626ae7bf37d8e252e329",
+    "src/main/java/com/juancasimiro/mcpgateway/application/research/ResearchQuestion.java": "50f5d72cc5d06893f0e93d7baac81162c6f4f90ed22586cdd27b91de5372819c",
+    "src/main/java/com/juancasimiro/mcpgateway/application/research/exception/InvalidResearchQuestionException.java": "ce047a150591f60f2f6f136e3278144edf4cacf14e97f04909ec10670ba3a41b",
+    "src/main/java/com/juancasimiro/mcpgateway/config/RagClientConfiguration.java": "c842dad84f79fb582455fbd45e4566c67c7c5de46c4b943e305f77779c04b093",
+    "src/main/java/com/juancasimiro/mcpgateway/config/RagProperties.java": "ac7fcbdaf9defaa6879f9aca2ac2a2cc39f77751d20202c6d15b113c8b981ff2",
+    "src/main/java/com/juancasimiro/mcpgateway/integration/rag/RagClient.java": "d16ea7b07028910cc41b37b45bb1583b0f3f1e0c2f7a48824cc90fa1fcef26d0",
+    "src/main/java/com/juancasimiro/mcpgateway/integration/rag/RagClientRequestExecutor.java": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "src/main/java/com/juancasimiro/mcpgateway/integration/rag/dto/RagQueryRequest.java": "a0d2d8512243103fc05e058b652fa8bf1b9b9d79ccf6c145fe15ba01ce9b3c33",
+    "src/main/java/com/juancasimiro/mcpgateway/integration/rag/dto/RagQueryResponse.java": "befab49654157517937c5f41ff016cec7a3749c2b1171ad74f83755266ab3377",
+    "src/main/java/com/juancasimiro/mcpgateway/integration/rag/exception/RagCircuitOpenException.java": "ac7c162e051b865392c9341f31ffeaec807b7a623afff975fcdeaff03d9a93b8",
+    "src/main/java/com/juancasimiro/mcpgateway/integration/rag/exception/RagContractException.java": "9106aeb14ae1b4c1706117bbfca637e3cb7110987bb788139af737a76a5f18bc",
+    "src/main/java/com/juancasimiro/mcpgateway/integration/rag/exception/RagException.java": "cc7f160469998ed85cf3e1bb07dacfc15dfbfd49fb3eed6a7beb38bacbc9197b",
+    "src/main/java/com/juancasimiro/mcpgateway/integration/rag/exception/RagRateLimitException.java": "034e8365351d59ae356543271993a0087d8164362be61eec0c82e178ec0c4446",
+    "src/main/java/com/juancasimiro/mcpgateway/integration/rag/exception/RagTimeoutException.java": "90c574302827065690e68b464f4dca8c4d347e44188f0d9c3cb363f842bc8a1c",
+    "src/main/java/com/juancasimiro/mcpgateway/integration/rag/exception/RagUnavailableException.java": "61cd1fa5628d3c4809e148dbcf4db2e7ca7e8ea0b2c1345f4630d9ae5c5614ca",
+    "src/main/java/com/juancasimiro/mcpgateway/mcp/QueryResearchCorpusTool.java": "fc57abc7076c8eb3e3f21747e810cd16d5de470038dd60da6bce70769665e482",
+    "src/main/java/com/juancasimiro/mcpgateway/mcp/model/QueryResearchCorpusResponse.java": "5928d89f0b2d3e7469bd44a7b75b881cbe9a47807a35f0a4632b55a51cdaf050",
+    "src/main/resources/application.yml": "0448b9ada0580bd605faed8dd3aa39fab08c8ceaed1e9c3b2f1e539215462f7d"
+  },
+  "current_accessor_bytecode": {
+    "question()Ljava/lang/String;": {
+      "instructions": [
+        "aload_0",
+        "getfield question:Ljava/lang/String;",
+        "areturn"
+      ],
+      "lineNumberTable": {
+        "0": 5
+      }
+    },
+    "resultCount()I": {
+      "instructions": [
+        "aload_0",
+        "getfield resultCount:I",
+        "ireturn"
+      ],
+      "lineNumberTable": {
+        "0": 5
+      }
+    },
+    "generated_toString_hashCode_equals_line": 5
+  },
+  "repeatability_check": "Initial and final clean broader runs have identical multisets of class, method, descriptor, line, mutator, description, indexes and status. Killing-test order/run counts and raw XML hashes may differ."
+}

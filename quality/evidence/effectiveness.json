@@ -1,0 +1,177 @@
+[
+  {
+    "name": "contract-logging",
+    "source": "src/main/java/com/juancasimiro/mcpgateway/mcp/QueryResearchCorpusTool.java",
+    "test": "QueryResearchCorpusToolTest#rethrowsContractFailure",
+    "original": "LOGGER.error(\"Research corpus contract failure\", exception);",
+    "broken": "LOGGER.warn(\"Research corpus contract failure\", exception);",
+    "sha256_before": "fc57abc7076c8eb3e3f21747e810cd16d5de470038dd60da6bce70769665e482",
+    "green_before": 0,
+    "broken_exit": 1,
+    "failures": [
+      {
+        "test": "rethrowsContractFailure",
+        "message": "\n[List check single element] (1 failure)\n-- failure 1 --\nexpected: ERROR\n but was: WARN\nat QueryResearchCorpusToolTest.lambda$6(QueryResearchCorpusToolTest.java:144)"
+      }
+    ],
+    "errors": 0,
+    "sha256_restored": "fc57abc7076c8eb3e3f21747e810cd16d5de470038dd60da6bce70769665e482",
+    "green_restored": 0
+  },
+  {
+    "name": "explicit-count",
+    "source": "src/main/java/com/juancasimiro/mcpgateway/mcp/QueryResearchCorpusTool.java",
+    "test": "QueryResearchCorpusToolTest#forwardsExplicitResultCountAndTrimmedQuestion",
+    "original": "resultCount != null ? resultCount : DEFAULT_RESULT_COUNT",
+    "broken": "DEFAULT_RESULT_COUNT",
+    "sha256_before": "fc57abc7076c8eb3e3f21747e810cd16d5de470038dd60da6bce70769665e482",
+    "green_before": 0,
+    "broken_exit": 1,
+    "failures": [
+      {
+        "test": "forwardsExplicitResultCountAndTrimmedQuestion",
+        "message": "\nArgument(s) are different! Wanted:\nresearchGateway.query(\n    ResearchQuestion[question=test question, resultCount=3]\n);\n-> at com.juancasimiro.mcpgateway.mcp.QueryResearchCorpusToolTest.forwardsExplicitResultCountAndTrimmedQuestion(QueryResearchCorpusToolTest.java:59)\nActual invocations have different arguments:\nresearchGateway.query(\n    ResearchQuestion[question=test question, resultCount=8]\n);\n-> at com.juancasimiro.mcpgateway.mcp.QueryResearchCorpusTool.query(QueryResearchCorpusTool.java:50)\n"
+      }
+    ],
+    "errors": 0,
+    "sha256_restored": "fc57abc7076c8eb3e3f21747e810cd16d5de470038dd60da6bce70769665e482",
+    "green_restored": 0
+  },
+  {
+    "name": "insufficient-context",
+    "source": "src/main/java/com/juancasimiro/mcpgateway/integration/rag/RagClientRequestExecutor.java",
+    "test": "McpTransportTest#returnsResearchOutcomeAsSuccessfulMcpResult",
+    "original": "response.contextSufficient(),",
+    "broken": "true,",
+    "sha256_before": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "green_before": 0,
+    "broken_exit": 1,
+    "failures": [
+      {
+        "test": "returnsResearchOutcomeAsSuccessfulMcpResult(boolean, String)[2]",
+        "message": "\nexpected: false\n but was: true"
+      }
+    ],
+    "errors": 0,
+    "sha256_restored": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "green_restored": 0
+  },
+  {
+    "name": "rate-limit-advice",
+    "source": "src/main/java/com/juancasimiro/mcpgateway/integration/rag/RagClientRequestExecutor.java",
+    "test": "RagClientRateLimitTest#permitsCallsWithinLimitThenRejectsWithoutRetryOrBreakerStatistics",
+    "original": "@RateLimiter(name = \"rag\")",
+    "broken": "// limiter deliberately removed for effectiveness check",
+    "sha256_before": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "green_before": 0,
+    "broken_exit": 1,
+    "failures": [
+      {
+        "test": "permitsCallsWithinLimitThenRejectsWithoutRetryOrBreakerStatistics",
+        "message": "\nExpecting code to raise a throwable."
+      }
+    ],
+    "errors": 0,
+    "sha256_restored": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "green_restored": 0
+  },
+  {
+    "name": "retry-advice",
+    "source": "src/main/java/com/juancasimiro/mcpgateway/integration/rag/RagClientRequestExecutor.java",
+    "test": "RagClientResilienceTest#retriesBothLoadingAndPermanentStartupFailuresWithinTheSameBudget",
+    "original": "@Retry(name = \"rag\")",
+    "broken": "// retry deliberately removed for effectiveness check",
+    "sha256_before": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "green_before": 0,
+    "broken_exit": 1,
+    "failures": [
+      {
+        "test": "retriesBothLoadingAndPermanentStartupFailuresWithinTheSameBudget(String)[1]",
+        "message": "Expected exactly 3 requests matching the following pattern but received 1:\n{\n  \"url\" : \"/query\",\n  \"method\" : \"POST\"\n}"
+      },
+      {
+        "test": "retriesBothLoadingAndPermanentStartupFailuresWithinTheSameBudget(String)[2]",
+        "message": "Expected exactly 3 requests matching the following pattern but received 1:\n{\n  \"url\" : \"/query\",\n  \"method\" : \"POST\"\n}"
+      }
+    ],
+    "errors": 0,
+    "sha256_restored": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "green_restored": 0
+  },
+  {
+    "name": "source-order",
+    "source": "src/main/java/com/juancasimiro/mcpgateway/integration/rag/RagClientRequestExecutor.java",
+    "test": "RagClientContractTest#sendsQueryAndDeserializesResponse",
+    "original": "response.sources(),",
+    "broken": "response.sources().reversed(),",
+    "sha256_before": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "green_before": 0,
+    "broken_exit": 1,
+    "failures": [
+      {
+        "test": "sendsQueryAndDeserializesResponse",
+        "message": "\nExpecting actual:\n  [\"b-source.pdf\", \"z-source.pdf\", \"a-source.pdf\", \"z-source.pdf\"]\nto contain exactly (and in same order):\n  [\"z-source.pdf\", \"a-source.pdf\", \"z-source.pdf\", \"b-source.pdf\"]\nbut there were differences at these indexes:\n  - element at index 0: expected \"z-source.pdf\" but was \"b-source.pdf\"\n  - element at index 1: expected \"a-source.pdf\" but was \"z-source.pdf\"\n  - element at index 2: expected \"z-source.pdf\" but was \"a-source.pdf\"\n  - element at index 3: expected \"b-source.pdf\" but was \"z-source.pdf\"\n"
+      }
+    ],
+    "errors": 0,
+    "sha256_restored": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "green_restored": 0
+  },
+  {
+    "name": "timeout-classification",
+    "source": "src/main/java/com/juancasimiro/mcpgateway/integration/rag/RagClientRequestExecutor.java",
+    "test": "McpTransportTest#deliversTechnicalFailureAsSafeMcpToolError",
+    "original": "statusCode.isSameCodeAs(HttpStatus.GATEWAY_TIMEOUT)",
+    "broken": "statusCode.isSameCodeAs(HttpStatus.REQUEST_TIMEOUT)",
+    "sha256_before": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "green_before": 0,
+    "broken_exit": 1,
+    "failures": [
+      {
+        "test": "deliversTechnicalFailureAsSafeMcpToolError(int, String)[2]",
+        "message": "\nExpecting all elements of:\n  [\"The research corpus is currently unavailable. Do not answer from general knowledge; tell the user that retrieval failed.\",\n    \"The research corpus is currently unavailable. Do not answer from general knowledge; tell the user that retrieval failed.\"]\nto match given predicate but these elements did not:\n  [\"The research corpus is currently unavailable. Do not answer from general knowledge; tell the user that retrieval failed.\",\n    \"The research corpus is currently unavailable. Do not answer from general knowledge; tell the user that retrieval failed.\"]"
+      }
+    ],
+    "errors": 0,
+    "sha256_restored": "6bdff71db02bfc35335ac9f83ef563da6fb1ddcdd77433686febf113de741c50",
+    "green_restored": 0
+  },
+  {
+    "name": "tracing-builder",
+    "source": "src/main/java/com/juancasimiro/mcpgateway/config/RagClientConfiguration.java",
+    "test": "RagClientTracingTest#propagatesCurrentTraceThroughTheConfiguredHttpClient",
+    "original": "return builder",
+    "broken": "return RestClient.builder()",
+    "sha256_before": "c842dad84f79fb582455fbd45e4566c67c7c5de46c4b943e305f77779c04b093",
+    "green_before": 0,
+    "broken_exit": 1,
+    "failures": [
+      {
+        "test": "propagatesCurrentTraceThroughTheConfiguredHttpClient",
+        "message": "\n[List check single element] (1 failure)\n-- failure 1 --\nExpecting actual not to be null\nat RagClientTracingTest.lambda$0(RagClientTracingTest.java:52)"
+      }
+    ],
+    "errors": 0,
+    "sha256_restored": "c842dad84f79fb582455fbd45e4566c67c7c5de46c4b943e305f77779c04b093",
+    "green_restored": 0
+  },
+  {
+    "name": "validation-upper-bound",
+    "source": "src/main/java/com/juancasimiro/mcpgateway/application/research/ResearchQuestion.java",
+    "test": "ResearchQuestionTest#rejectsResultCountAboveTwenty",
+    "original": "resultCount > MAX_RESULT_COUNT",
+    "broken": "resultCount > MAX_RESULT_COUNT + 1",
+    "sha256_before": "50f5d72cc5d06893f0e93d7baac81162c6f4f90ed22586cdd27b91de5372819c",
+    "green_before": 0,
+    "broken_exit": 1,
+    "failures": [
+      {
+        "test": "rejectsResultCountAboveTwenty",
+        "message": "\nExpecting code to raise a throwable."
+      }
+    ],
+    "errors": 0,
+    "sha256_restored": "50f5d72cc5d06893f0e93d7baac81162c6f4f90ed22586cdd27b91de5372819c",
+    "green_restored": 0
+  }
+]

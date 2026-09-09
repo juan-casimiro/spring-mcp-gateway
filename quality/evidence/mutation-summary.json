@@ -1,0 +1,35 @@
+{
+  "before-default": {
+    "statuses": {
+      "KILLED": 24
+    },
+    "total": 24,
+    "non_killed": []
+  },
+  "after-default": {
+    "statuses": {
+      "KILLED": 24
+    },
+    "total": 24,
+    "non_killed": []
+  },
+  "after-stronger": {
+    "statuses": {
+      "KILLED": 48,
+      "SURVIVED": 1
+    },
+    "total": 49,
+    "non_killed": [
+      {
+        "detected": "false",
+        "status": "SURVIVED",
+        "numberOfTestsRun": "35",
+        "mutatedClass": "com.juancasimiro.mcpgateway.integration.rag.RagClientRequestExecutor",
+        "mutatedMethod": "query",
+        "lineNumber": "42",
+        "mutator": "org.pitest.mutationtest.engine.gregor.mutators.InlineConstantMutator",
+        "description": "Substituted 0 with 1"
+      }
+    ]
+  }
+}
