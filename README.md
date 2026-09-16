@@ -1,5 +1,7 @@
 # spring-mcp-gateway
 
+[![CI](https://github.com/juan-casimiro/spring-mcp-gateway/actions/workflows/ci.yml/badge.svg)](https://github.com/juan-casimiro/spring-mcp-gateway/actions/workflows/ci.yml)
+
 A Spring Boot MCP gateway that exposes an existing FastAPI retrieval-augmented generation (RAG) service to MCP clients.
 
 The gateway publishes MCP tools over Streamable HTTP. MCP-facing models are mapped to application models, and the `ResearchGateway` abstraction isolates application code from the FastAPI `/query` JSON contract.
