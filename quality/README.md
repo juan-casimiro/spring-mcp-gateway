@@ -4,15 +4,18 @@ Use Java 25 and the Maven wrapper. These reports are opt-in measurements, not
 numeric build gates. No live RAG service, model downloads, LLM calls, or telemetry
 collector is needed. The default test suite remains `./mvnw test`.
 
-Python 3 is required only for `quality/summarize.py` and
-`quality/verify_effectiveness.py`. Both use only the Python standard library;
-Maven builds, tests, and JaCoCo/PMD/PIT runs do not require Python.
+Python 3 is required only for `quality/summarize.py`, `quality/compare_baseline.py`,
+and `quality/verify_effectiveness.py`. All three use only the Python standard
+library; Maven builds, tests, and JaCoCo/PMD/PIT runs do not require Python.
 
 The committed `quality/evidence` CSV/JSON files contain the original
 audit snapshots (`8728fab`) and the separately labelled `mutation-rerun.json`
-investigation evidence. They are not automatically refreshed results. There is currently
-no repository CI workflow running these checks. The commands below generate local
-reports under `target`; compare them with the snapshots and record any refresh explicitly.
+investigation evidence. They are not automatically refreshed results. The
+GitHub Actions `build-and-test` check (JUA-67) runs the regular Maven test
+lifecycle on every PR and push to `main`, but does not run this quality
+profile; a separate advisory quality workflow is planned. The commands below
+generate local reports under `target`; compare them with the snapshots and
+record any refresh explicitly.
 
 ## Coverage and complexity
 
@@ -27,6 +30,56 @@ python3 quality/summarize.py
 HTML reports: `target/site/jacoco/index.html` and `target/reports/pmd.html`.
 Machine-readable summaries: `target/quality/{coverage,complexity,hotspots}.csv`.
 The summarizer rejects PMD analysis errors.
+
+`summarize.py` also writes `target/quality/metadata.json`: the commit passed
+as its second argument (omit it for an ad-hoc local snapshot) plus the Java
+version and JaCoCo/PMD plugin versions read directly from `pom.xml`, so this
+never drifts from the actual toolchain:
+
+```sh
+python3 quality/summarize.py target/quality "$(git rev-parse HEAD)"
+```
+
+## Baseline comparison
+
+`quality/compare_baseline.py` compares a head snapshot directory (as produced
+above) against a base snapshot directory, both containing
+`coverage.csv`/`hotspots.csv`/`complexity.csv`/`metadata.json`:
+
+```sh
+python3 quality/compare_baseline.py target/quality path/to/base-snapshot
+```
+
+Prints a JSON report on stdout with before/after/delta for coverage counters
+and per-method complexity/CRAP-style risk, plus a `warnings` list. Omit the
+base directory, or point it at one that doesn't exist, to report an
+absent/expired baseline (`baseline_status: "missing"`). If the two
+snapshots' `metadata.json` toolchain versions differ, the comparison reports
+`baseline_status: "incompatible"` and names the mismatched field(s) instead
+of computing a delta across incompatible measurements. In both non-`"ok"`
+cases every comparison is the literal string `"unavailable"`, never a
+numeric zero, and no warnings are emitted. A method present in the head
+snapshot only is classified `"new"` and never triggers a warning on its own
+complexity; only a method present in **both** snapshots (`"changed"`) can
+warn, and only on a coverage decrease (`LINE`/`BRANCH`) or a CRAP-style/PMD
+complexity increase. A malformed or incomplete snapshot directory raises and
+exits non-zero rather than printing a report — this is what lets a workflow
+distinguish a real quality warning from a broken quality tool.
+
+This script does not talk to GitHub or CI; workflow wiring (which base
+snapshot to fetch, job summary rendering, artifact retention) is a separate
+concern.
+
+Run its tests with:
+
+```sh
+python3 -m unittest discover -s quality/tests
+```
+
+`quality/tests/fixtures/` holds one real (non-mocked) base/head snapshot
+pair per required comparison case: a coverage decrease, a changed method's
+complexity/CRAP increase, a new method, a missing baseline, and an
+incompatible toolchain.
 
 Versions: JaCoCo 0.8.14, Maven PMD plugin 3.28.0 / PMD 7.17.0. The PMD ruleset
 reports cyclomatic/cognitive complexity from 1 upward; these reporting levels

@@ -1,0 +1,2 @@
+class,method,line,metric,value
+com.example.Widget,paint,42,CyclomaticComplexity,2
