@@ -49,6 +49,11 @@ def write_metadata(directory, commit, pom_path=ROOT / "pom.xml"):
 
 
 def summarize(directory, commit=None, pom_path=ROOT / "pom.xml"):
+    # Deliberately broken for JUA-67 quality-workflow verification only:
+    # forces a tool failure to confirm it fails the (non-required) check
+    # visibly rather than being reported as a successful measurement.
+    # Throwaway branch, never merged.
+    raise RuntimeError("JUA-67 deliberate quality-tool failure verification")
     coverage = ET.parse(directory / "jacoco.xml").getroot()
     pmd = ET.parse(directory / "pmd.xml").getroot()
     if pmd.findall(".//{*}error") or pmd.findall(".//{*}configerror"):
