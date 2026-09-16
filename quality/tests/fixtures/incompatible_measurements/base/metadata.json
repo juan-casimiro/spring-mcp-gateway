@@ -1,0 +1,6 @@
+{
+  "commit": "base0005",
+  "java_version": "25",
+  "jacoco_plugin_version": "0.8.13",
+  "pmd_plugin_version": "3.28.0"
+}

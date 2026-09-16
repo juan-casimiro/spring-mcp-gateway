@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
 """Summarize JaCoCo/PMD reports deterministically; no acceptance thresholds.
 
-Usage: python3 quality/summarize.py [report-directory]
+Usage: python3 quality/summarize.py [report-directory] [commit-sha]
 The directory must contain jacoco.xml and pmd.xml. Default: target/quality.
+Also writes metadata.json (commit + toolchain versions read from pom.xml) so
+quality/compare_baseline.py can tell whether two snapshots are comparable.
 """
 import csv
+import json
 from pathlib import Path
 import re
 import sys
 import xml.etree.ElementTree as ET
+
+
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def counters(element):
@@ -16,7 +22,33 @@ def counters(element):
             for c in element.findall("counter")}
 
 
-def summarize(directory):
+def read_pom_toolchain(pom_path):
+    """Read the toolchain versions that determine snapshot comparability.
+
+    The maven-pmd-plugin version is recorded rather than the PMD engine
+    version it resolves transitively (7.17.0 per quality/README.md); pom.xml
+    does not declare that engine version directly.
+    """
+    ns = {"m": "http://maven.apache.org/POM/4.0.0"}
+    pom = ET.parse(pom_path).getroot()
+    java_version = pom.findtext("m:properties/m:java.version", namespaces=ns)
+    quality_profile = pom.find(
+        "m:profiles/m:profile[m:id='quality']", namespaces=ns)
+    plugins = {plugin.findtext("m:artifactId", namespaces=ns): plugin.findtext("m:version", namespaces=ns)
+               for plugin in quality_profile.findall(".//m:plugin", namespaces=ns)}
+    return {
+        "java_version": java_version,
+        "jacoco_plugin_version": plugins["jacoco-maven-plugin"],
+        "pmd_plugin_version": plugins["maven-pmd-plugin"],
+    }
+
+
+def write_metadata(directory, commit, pom_path=ROOT / "pom.xml"):
+    metadata = {"commit": commit, **read_pom_toolchain(pom_path)}
+    (directory / "metadata.json").write_text(json.dumps(metadata, indent=2) + "\n")
+
+
+def summarize(directory, commit=None, pom_path=ROOT / "pom.xml"):
     coverage = ET.parse(directory / "jacoco.xml").getroot()
     pmd = ET.parse(directory / "pmd.xml").getroot()
     if pmd.findall(".//{*}error") or pmd.findall(".//{*}configerror"):
@@ -63,6 +95,9 @@ def summarize(directory):
         writer.writerow(["class", "method", "line", "metric", "value"])
         writer.writerows(sorted(rows))
 
+    write_metadata(directory, commit, pom_path)
+
 
 if __name__ == "__main__":
-    summarize(Path(sys.argv[1] if len(sys.argv) > 1 else "target/quality"))
+    summarize(Path(sys.argv[1] if len(sys.argv) > 1 else "target/quality"),
+              sys.argv[2] if len(sys.argv) > 2 else None)

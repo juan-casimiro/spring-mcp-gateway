@@ -1,0 +1,2 @@
+class,method,descriptor,jacoco_cyclomatic,covered_lines,missed_lines,line_percent,crap_style
+com.example.Widget,paint,()V,6,10,0,100.00,6.000
