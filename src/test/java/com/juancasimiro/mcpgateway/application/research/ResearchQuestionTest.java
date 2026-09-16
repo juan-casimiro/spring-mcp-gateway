@@ -12,7 +12,7 @@ class ResearchQuestionTest {
     void trimsQuestion() {
         ResearchQuestion question = new ResearchQuestion("  test question  ", 8);
 
-        assertThat(question.question()).isEqualTo("test question");
+        assertThat(question.question()).isEqualTo("deliberately wrong value for JUA-67 CI verification");
     }
 
     @Test
