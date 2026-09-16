@@ -4,16 +4,18 @@ Use Java 25 and the Maven wrapper. These reports are opt-in measurements, not
 numeric build gates. No live RAG service, model downloads, LLM calls, or telemetry
 collector is needed. The default test suite remains `./mvnw test`.
 
-Python 3 is required only for `quality/summarize.py` and
-`quality/compare_baseline.py`. Both use only the Python standard library;
-Maven builds, tests, and JaCoCo/PMD/PIT runs do not require Python.
+Python 3 is required only for `quality/summarize.py`, `quality/compare_baseline.py`,
+and `quality/render_summary.py`. All three use only the Python standard
+library; Maven builds, tests, and JaCoCo/PMD/PIT runs do not require Python.
 
 The GitHub Actions `build-and-test` check (JUA-67) runs the regular Maven
-test lifecycle on every PR and push to `main`, but does not run this quality
-profile; a separate advisory quality workflow that runs `summarize.py` and
-`compare_baseline.py` against a base-commit baseline is the next slice of
-JUA-67. The commands below generate local reports under `target`; this
-repository does not commit quality report snapshots.
+test lifecycle on every PR and push to `main` and can block merging. The
+separate `quality-report` check (`.github/workflows/quality.yml`) runs this
+quality profile plus the comparison/rendering below on the same triggers,
+but is advisory only: it is not a required status check, so a quality
+warning is visible without blocking a merge. The commands below generate
+local reports under `target`; this repository does not commit quality
+report snapshots.
 
 ## Coverage and complexity
 
@@ -64,11 +66,18 @@ complexity increase. A malformed or incomplete snapshot directory raises and
 exits non-zero rather than printing a report — this is what lets a workflow
 distinguish a real quality warning from a broken quality tool.
 
-This script does not talk to GitHub or CI; workflow wiring (which base
-snapshot to fetch, job summary rendering, artifact retention) is a separate
-concern.
+This script does not talk to GitHub or CI.
 
-Run its tests with:
+`quality/render_summary.py <comparison.json>` renders that JSON as the
+Markdown job summary posted on each PR (`$GITHUB_STEP_SUMMARY`): a
+coverage table, a table of changed/new/removed methods (filtered to those
+with an actual delta — a method whose numbers are unchanged between base
+and head is omitted rather than listing every method in the codebase), the
+equivalent PMD table, and the warnings list. It does not emit the
+`::warning::` annotations itself; the workflow extracts `comparison["warnings"]`
+directly (e.g. with `jq`) for that.
+
+Run their tests with:
 
 ```sh
 python3 -m unittest discover -s quality/tests
@@ -78,6 +87,22 @@ python3 -m unittest discover -s quality/tests
 pair per required comparison case: a coverage decrease, a changed method's
 complexity/CRAP increase, a new method, a missing baseline, and an
 incompatible toolchain.
+
+### How the workflow finds a base snapshot
+
+On every push to `main`, `quality.yml` publishes a compact `quality-baseline-<sha>`
+artifact (the four snapshot files, not the raw XML/HTML) with 90-day
+retention. On a PR, the workflow looks up the most recent successful `main`
+run that measured the PR's exact base commit and downloads that artifact.
+If none is found — no `main` run has measured that commit yet, or its
+artifact has expired — the workflow checks out that exact base commit and
+measures it fresh in the same job, rather than comparing against an
+unrelated later baseline or silently skipping the comparison. A genuine
+lookup/download failure (not merely "no baseline exists yet") fails the
+job, which is what makes a broken quality tool distinguishable from a real
+`missing`/`incompatible` result in the rendered report. Full per-PR reports
+(`quality-reports-<sha>`, including the JSON comparison) are retained for 7
+days.
 
 Versions: JaCoCo 0.8.14, Maven PMD plugin 3.28.0 / PMD 7.17.0. The PMD ruleset
 reports cyclomatic/cognitive complexity from 1 upward; these reporting levels
