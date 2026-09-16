@@ -199,8 +199,7 @@ Run the normal unit, application-context, and WireMock-backed RAG contract tests
 ```
 
 For opt-in coverage, complexity, CRAP-style summaries, and focused mutation testing,
-see [diagnostic quality checks](quality/README.md). The
-[JUA-82 audit](quality/JUA-82-audit.md) records the behavioural gaps and test-effectiveness evidence.
+see [diagnostic quality checks](quality/README.md).
 
 `RagClientIT` is excluded from normal test runs. To execute it against a running FastAPI RAG service:
 
