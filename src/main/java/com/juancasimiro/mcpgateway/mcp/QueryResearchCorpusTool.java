@@ -71,4 +71,18 @@ public class QueryResearchCorpusTool {
         );
     }
 
+    // Deliberately unused and untested: JUA-67 quality-workflow verification only.
+    // Demonstrates an uncovered new method (no self-warning) that drags down
+    // aggregate coverage (triggers the LINE/BRANCH warning). Throwaway branch,
+    // never merged.
+    String classify(int value) {
+        if (value > 0) {
+            return "positive";
+        } else if (value < 0) {
+            return "negative";
+        } else {
+            return "zero";
+        }
+    }
+
 }
