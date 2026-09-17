@@ -199,9 +199,10 @@ Once up:
 - RAG service: `http://localhost:8000/health`
 - Jaeger UI: `http://localhost:16686`
 
-Traces from the gateway (and, once instrumented, the RAG service) export to
-Jaeger over OTLP/HTTP automatically — no manual `OTEL_*` configuration
-needed. Tear down with `docker compose down`.
+Traces export to Jaeger automatically, no manual configuration needed: the
+gateway over OTLP/HTTP (port `4318`), and the RAG service (JUA-62) over
+OTLP/gRPC (port `4317`) — `docker-compose.yml` sets each service's exporter
+env vars for you. Tear down with `docker compose down`.
 
 ## Verify with MCP Inspector
 

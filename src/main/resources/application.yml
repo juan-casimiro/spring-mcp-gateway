@@ -13,9 +13,12 @@ management:
     export:
       otlp:
         enabled: ${OTEL_TRACING_EXPORT_ENABLED:false}
-  otlp:
+  opentelemetry:
     tracing:
-      endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+      export:
+        otlp:
+          endpoint: ${OTEL_EXPORTER_OTLP_TRACES_ENDPOINT:http://localhost:4318/v1/traces}
+  otlp:
     metrics:
       export:
         enabled: ${OTEL_METRICS_EXPORT_ENABLED:false}
