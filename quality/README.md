@@ -90,6 +90,13 @@ incompatible toolchain.
 
 ### How the workflow finds a base snapshot
 
+The workflow measures the PR's own head commit (`github.event.pull_request.head.sha`),
+not GitHub's synthetic `refs/pull/N/merge` commit — `actions/checkout` is
+pinned explicitly to that SHA so the tree measured always matches the
+commit recorded in `metadata.json` and shown in the job summary, and the
+result reflects only the PR's own changes rather than also folding in
+whatever has landed on `main` since the PR's base was set.
+
 On every push to `main`, `quality.yml` publishes a compact `quality-baseline-<sha>`
 artifact (the four snapshot files, not the raw XML/HTML) with 90-day
 retention. On a PR, the workflow looks up the most recent successful `main`

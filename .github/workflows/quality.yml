@@ -21,16 +21,6 @@ jobs:
       contents: read
       actions: read
     steps:
-      - name: Check out head commit
-        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
-
-      - name: Set up Java 25 (Temurin)
-        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
-        with:
-          distribution: temurin
-          java-version: "25"
-          cache: maven
-
       - name: Determine head commit SHA
         id: head
         run: |
@@ -39,6 +29,26 @@ jobs:
           else
             echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
           fi
+
+      # actions/checkout defaults to GITHUB_SHA, which on pull_request events
+      # is GitHub's synthetic refs/pull/N/merge commit (head merged onto the
+      # base branch's *current* tip), not the PR branch's own commit. That
+      # would silently measure a different tree than the SHA recorded below
+      # in metadata.json/the artifact name, and would conflate the PR's own
+      # changes with whatever has landed on main since the PR's base was set.
+      # Pin explicitly to the real head commit so what's measured always
+      # matches what's labeled.
+      - name: Check out head commit
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+        with:
+          ref: ${{ steps.head.outputs.sha }}
+
+      - name: Set up Java 25 (Temurin)
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
+        with:
+          distribution: temurin
+          java-version: "25"
+          cache: maven
 
       - name: Generate head quality snapshot
         run: |
