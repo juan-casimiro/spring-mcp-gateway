@@ -55,6 +55,11 @@ export OTEL_METRICS_EXPORT_ENABLED=true
 export OTEL_TRACING_EXPORT_ENABLED=true
 ```
 
+The OTLP trace exporter targets `http://localhost:4318/v1/traces` by default;
+override it with `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` (Docker Compose sets
+this to the bundled Jaeger container — see
+[Docker Compose (full stack)](#docker-compose-full-stack)).
+
 Tracing samples all requests by default. Spring Boot Actuator, Micrometer, and OpenTelemetry provide the observability foundation.
 
 ## Build and run
@@ -116,7 +121,8 @@ Desktop provides `host.docker.internal`; on Linux Docker Engine, add
 `--add-host=host.docker.internal:host-gateway` and ensure the upstream listens on
 an interface reachable from Docker. The existing `localhost:8000` application
 default refers to the gateway container itself and will not reach a separate RAG
-service. Multi-service setup is deferred to JUA-66.
+service. For a one-command local demo stack that wires this up automatically,
+see [Docker Compose (full stack)](#docker-compose-full-stack) below.
 
 All Spring configuration remains external through environment variables, such
 as `RAG_BASE_URL`, `RAG_RATE_LIMIT_FOR_PERIOD`, `OTEL_TRACING_EXPORT_ENABLED`, and
@@ -159,6 +165,43 @@ perform paid retrieval/LLM calls. Use the MCP Inspector flow below against
 docker stop mcp-gateway
 docker rm mcp-gateway
 ```
+
+### Docker Compose (full stack)
+
+`docker-compose.yml` brings up the gateway, the RAG service, and Jaeger with
+one command:
+
+```bash
+docker compose up --build
+```
+
+This assumes [`ai-research-assistant`](https://github.com/juan-casimiro/ai-research-assistant)
+is checked out as a sibling directory of this repository (both under the same
+parent directory). Override the path with `RAG_SERVICE_PATH` if yours lives
+elsewhere:
+
+```bash
+RAG_SERVICE_PATH=/path/to/ai-research-assistant docker compose up --build
+```
+
+The RAG service's own `docker-compose.yml` is reused via Compose's `include`,
+so its build, healthcheck, Chroma volume, and optional `ollama` profile stay
+defined in one place. Set `ANTHROPIC_API_KEY` in `ai-research-assistant/.env`
+(or use `--profile ollama`, per that repo's README) before starting.
+
+The gateway's `depends_on` condition waits for the RAG service's healthcheck —
+which polls `/health` — to report `healthy`, not merely for the container to
+start, so the gateway never starts querying before the corpus is ready.
+
+Once up:
+
+- Gateway: `http://localhost:8080/mcp` (see [Verify with MCP Inspector](#verify-with-mcp-inspector))
+- RAG service: `http://localhost:8000/health`
+- Jaeger UI: `http://localhost:16686`
+
+Traces from the gateway (and, once instrumented, the RAG service) export to
+Jaeger over OTLP/HTTP automatically — no manual `OTEL_*` configuration
+needed. Tear down with `docker compose down`.
 
 ## Verify with MCP Inspector
 
