@@ -1,0 +1,41 @@
+# Local demo stack: gateway + RAG service + Jaeger, one command.
+#
+#   docker compose up --build
+#
+# Assumes ai-research-assistant is checked out as a sibling directory (see
+# README's workspace layout). Override the path with RAG_SERVICE_PATH if
+# yours lives elsewhere.
+#
+# The `research-assistant` service (build, healthcheck, volumes, optional
+# `ollama` profile) is defined once, in ai-research-assistant's own compose
+# file, and reused here via `include` rather than duplicated.
+include:
+  - path: ${RAG_SERVICE_PATH:-../ai-research-assistant}/docker-compose.yml
+
+services:
+  # Forward-declared to wire the RAG service's tracing (JUA-62) to Jaeger.
+  # Its exporter is OTLP/gRPC and opt-in (OTEL_TRACES_EXPORTER defaults to
+  # "none"), unlike the gateway's OTLP/HTTP exporter below.
+  research-assistant:
+    environment:
+      OTEL_TRACES_EXPORTER: "otlp"
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4317
+
+  gateway:
+    build: .
+    ports:
+      - "127.0.0.1:8080:8080"
+    environment:
+      RAG_BASE_URL: http://research-assistant:8000
+      OTEL_TRACING_EXPORT_ENABLED: "true"
+      OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
+    depends_on:
+      research-assistant:
+        condition: service_healthy
+      jaeger:
+        condition: service_started
+
+  jaeger:
+    image: jaegertracing/all-in-one:1.76.0
+    ports:
+      - "127.0.0.1:16686:16686"
