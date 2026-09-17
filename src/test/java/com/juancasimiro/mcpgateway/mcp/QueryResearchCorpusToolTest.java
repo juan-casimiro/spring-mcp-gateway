@@ -13,6 +13,7 @@ import ch.qos.logback.classic.Level;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.slf4j.LoggerFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,6 +33,7 @@ class QueryResearchCorpusToolTest {
 
     private final Logger logger = (Logger) LoggerFactory.getLogger(QueryResearchCorpusTool.class);
     private final ListAppender<ILoggingEvent> logs = new ListAppender<>();
+    private final SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
 
     @BeforeEach
     void captureBoundaryLogs() {
@@ -52,7 +54,7 @@ class QueryResearchCorpusToolTest {
         ResearchAnswer answer = new ResearchAnswer("test answer", List.of("test source"), true, null);
         when(gateway.query(any(ResearchQuestion.class))).thenReturn(answer);
 
-        var response = new QueryResearchCorpusTool(gateway).query("  test question  ", 3);
+        var response = new QueryResearchCorpusTool(gateway, meterRegistry).query("  test question  ", 3);
 
         assertThat(response).isEqualTo(new QueryResearchCorpusResponse(
                 "test answer", List.of("test source"), true, null));
@@ -71,7 +73,7 @@ class QueryResearchCorpusToolTest {
                 "The retrieved context does not fully answer the question."
         );
         when(researchGateway.query(question)).thenReturn(answer);
-        QueryResearchCorpusTool tool = new QueryResearchCorpusTool(researchGateway);
+        QueryResearchCorpusTool tool = new QueryResearchCorpusTool(researchGateway, meterRegistry);
 
         QueryResearchCorpusResponse response = tool.query("Example question", null);
 
@@ -82,6 +84,37 @@ class QueryResearchCorpusToolTest {
                 "The retrieved context does not fully answer the question."
         ));
         verify(researchGateway).query(question);
+    }
+
+    @Test
+    void recordsSuccessOutcomeOnThePerToolTimerAfterASuccessfulQuery() {
+        ResearchGateway researchGateway = mock(ResearchGateway.class);
+        when(researchGateway.query(any(ResearchQuestion.class)))
+                .thenReturn(new ResearchAnswer("test answer", List.of("test source"), true, null));
+
+        new QueryResearchCorpusTool(researchGateway, meterRegistry).query("test question", 8);
+
+        var timer = meterRegistry.find("mcp.tool.duration")
+                .tag("tool", "query_research_corpus")
+                .tag("outcome", "success")
+                .timer();
+        assertThat(timer).isNotNull();
+        assertThat(timer.count()).isEqualTo(1);
+    }
+
+    @Test
+    void recordsErrorOutcomeOnThePerToolTimerWhenTheGatewayFails() {
+        RagTimeoutException failure = new RagTimeoutException();
+        QueryResearchCorpusTool tool = toolThrowing(failure);
+
+        assertThatThrownBy(() -> tool.query("test question", 8)).isSameAs(failure);
+
+        var timer = meterRegistry.find("mcp.tool.duration")
+                .tag("tool", "query_research_corpus")
+                .tag("outcome", "error")
+                .timer();
+        assertThat(timer).isNotNull();
+        assertThat(timer.count()).isEqualTo(1);
     }
 
     @Test
@@ -117,7 +150,7 @@ class QueryResearchCorpusToolTest {
     @Test
     void rethrowsInvalidQuestionFailure() {
         ResearchGateway researchGateway = mock(ResearchGateway.class);
-        QueryResearchCorpusTool tool = new QueryResearchCorpusTool(researchGateway);
+        QueryResearchCorpusTool tool = new QueryResearchCorpusTool(researchGateway, meterRegistry);
 
         assertThatThrownBy(() -> tool.query("   ", 8))
                 .isInstanceOf(InvalidResearchQuestionException.class)
@@ -154,7 +187,7 @@ class QueryResearchCorpusToolTest {
     private QueryResearchCorpusTool toolThrowing(RuntimeException failure) {
         ResearchGateway researchGateway = mock(ResearchGateway.class);
         when(researchGateway.query(new ResearchQuestion("test question", 8))).thenThrow(failure);
-        return new QueryResearchCorpusTool(researchGateway);
+        return new QueryResearchCorpusTool(researchGateway, meterRegistry);
     }
 
 }
