@@ -60,7 +60,7 @@ override it with `OTEL_EXPORTER_OTLP_TRACES_ENDPOINT` (Docker Compose sets
 this to the bundled Jaeger container — see
 [Docker Compose (full stack)](#docker-compose-full-stack)).
 
-Tracing samples all requests by default. Spring Boot Actuator, Micrometer, and OpenTelemetry provide the observability foundation.
+Tracing samples all requests by default. See [Observability](#observability) for the Actuator endpoints, metrics, and RAG-specific span attributes.
 
 ## Build and run
 
@@ -233,6 +233,92 @@ env vars for you. Tear down with `docker compose down`.
    `resultCount` is optional and defaults to `8`.
 
 The end-to-end check succeeds when Inspector connects, discovers the tool, and the invocation reaches the upstream FastAPI service and returns a grounded `answer`, ordered `sources`, `contextSufficient`, and `insufficiencyReason`.
+
+## Observability
+
+Spring Boot Actuator, Micrometer, and OpenTelemetry provide the foundation. On
+top of generic HTTP telemetry, the gateway records RAG-specific attributes and
+per-tool metrics.
+
+### Actuator endpoints
+
+Exposed over HTTP on the application port (`8080` by default):
+
+| Endpoint | Shows |
+| --- | --- |
+| `/actuator/health` | Gateway health (does not probe the RAG service) |
+| `/actuator/metrics` | Every Micrometer metric; `/actuator/metrics/<name>` shows one |
+| `/actuator/circuitbreakers` | The `rag` circuit breaker: state, failure rate, call counts |
+| `/actuator/circuitbreakerevents` | Recent breaker events (successes, errors, state transitions) |
+| `/actuator/retries` | The `rag` retry instance |
+| `/actuator/ratelimiters` | The `rag` rate limiter |
+
+These endpoints are unauthenticated and the gateway has no auth layer, so
+avoid publishing the port beyond localhost. Docker Compose publishes it on
+`127.0.0.1` only.
+
+### Metrics
+
+| Metric | Tags | Meaning |
+| --- | --- | --- |
+| `mcp.tool.duration` | `tool`, `outcome` (`success` or `error`) | Timer around each MCP tool call. `error` covers every failure, including invalid input rejected before the RAG call. |
+| `rag.query` | `rag.circuit_breaker.state`, `rag.context_sufficient`, `error` | Timer around each logical RAG query, retries included. The result counts are deliberately span-only to keep metric cardinality bounded. |
+| `resilience4j.circuitbreaker.*` | `name` (`rag`), `kind` / `state` | Call outcomes, failure and slow-call rates, current state |
+| `resilience4j.retry.calls` | `name`, `kind` | Calls that succeeded or failed with and without retries |
+| `resilience4j.ratelimiter.*` | `name` | Available permissions and waiting threads |
+
+### Span attributes
+
+Each query produces one `rag.query` span, regardless of how many HTTP attempts
+the retry policy makes. It carries attributes that a generic HTTP trace would
+not:
+
+| Attribute | Value |
+| --- | --- |
+| `rag.n_results.requested` | The `resultCount` asked for |
+| `rag.n_results.returned` | Number of sources in the response; absent if the call failed |
+| `rag.context_sufficient` | `true` / `false`; absent if the call failed. `false` is a valid answer, not an error. |
+| `rag.circuit_breaker.state` | `CLOSED`, `OPEN` or `HALF_OPEN` when the call started |
+
+Values are recorded as strings. The `rag.*` namespace is deliberately custom:
+the [OpenTelemetry GenAI conventions](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
+(still experimental) define `gen_ai.retrieval.*` and `gen_ai.tool.*`, but nothing
+that covers result counts, context sufficiency or breaker state. A failed call
+is marked as an error on the span. To see them in Jaeger, run the
+[Docker Compose stack](#docker-compose-full-stack), invoke the tool, and search
+for the `rag.query` operation in service `spring-mcp-gateway`.
+
+### Try it: inspect the tool timer
+
+1. Start the gateway (`./mvnw spring-boot:run` or Docker Compose) and invoke
+   `query_research_corpus` once, for example with
+   [MCP Inspector](#verify-with-mcp-inspector).
+2. Read the timer:
+
+   ```bash
+   curl -s 'http://localhost:8080/actuator/metrics/mcp.tool.duration?tag=tool:query_research_corpus&tag=outcome:success'
+   ```
+
+   ```json
+   {
+     "name": "mcp.tool.duration",
+     "baseUnit": "seconds",
+     "measurements": [
+       { "statistic": "COUNT", "value": 1.0 },
+       { "statistic": "TOTAL_TIME", "value": 0.0148 },
+       { "statistic": "MAX", "value": 0.0148 }
+     ],
+     "availableTags": []
+   }
+   ```
+
+   `COUNT` rises by one per successful call. `TOTAL_TIME` and `MAX` are in
+   seconds; the figures above came from a stubbed RAG service, so expect much
+   larger values against the real one.
+
+Timer series are created on first use, so `outcome:error` returns `404` until a
+call has failed. Omit the `tag` parameters to see the timer across all
+outcomes.
 
 ## Tests
 

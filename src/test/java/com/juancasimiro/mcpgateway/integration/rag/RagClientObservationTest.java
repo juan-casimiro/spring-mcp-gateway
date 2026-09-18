@@ -1,8 +1,10 @@
 package com.juancasimiro.mcpgateway.integration.rag;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
+import com.github.tomakehurst.wiremock.stubbing.Scenario;
 import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagCircuitOpenException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.micrometer.observation.Observation;
@@ -20,6 +22,7 @@ import org.wiremock.spring.InjectWireMock;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.okJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
@@ -27,7 +30,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringBootTest
+@SpringBootTest(properties = "resilience4j.retry.instances.rag.wait-duration=0")
 @EnableWireMock(@ConfigureWireMock(name = "rag-service", baseUrlProperties = "rag.base-url"))
 class RagClientObservationTest {
 
@@ -81,6 +84,7 @@ class RagClientObservationTest {
 
         Observation.Context context = onlyFinishedContext();
         assertThat(context.getLowCardinalityKeyValue("rag.context_sufficient").getValue()).isEqualTo("false");
+        assertThat(context.getError()).isNull();
     }
 
     @Test
@@ -93,7 +97,29 @@ class RagClientObservationTest {
         Observation.Context context = onlyFinishedContext();
         assertThat(context.getLowCardinalityKeyValue("rag.circuit_breaker.state").getValue()).isEqualTo("OPEN");
         assertThat(context.getHighCardinalityKeyValue("rag.n_results.returned")).isNull();
+        assertThat(context.getError())
+                .isInstanceOf(RagCircuitOpenException.class)
+                .hasCauseInstanceOf(CallNotPermittedException.class);
         ragWireMock.verify(0, postRequestedFor(urlEqualTo("/query")));
+    }
+
+    @Test
+    void completesExactlyOneObservationWhenRetriesRecoverFromATransientFailure() {
+        ragWireMock.stubFor(post(urlEqualTo("/query")).inScenario("retry-then-success")
+                .whenScenarioStateIs(Scenario.STARTED).willSetStateTo("recovered")
+                .willReturn(aResponse().withStatus(503)));
+        ragWireMock.stubFor(post(urlEqualTo("/query")).inScenario("retry-then-success")
+                .whenScenarioStateIs("recovered").willReturn(okJson("""
+                        {"answer":"test recovered answer","sources":["source-a"],"context_sufficient":true}
+                        """)));
+
+        ragClient.query(TEST_QUESTION);
+
+        ragWireMock.verify(2, postRequestedFor(urlEqualTo("/query")));
+        Observation.Context context = onlyFinishedContext();
+        assertThat(context.getError()).isNull();
+        assertThat(context.getHighCardinalityKeyValue("rag.n_results.returned").getValue()).isEqualTo("1");
+        assertThat(context.getLowCardinalityKeyValue("rag.circuit_breaker.state").getValue()).isEqualTo("CLOSED");
     }
 
     private Observation.Context onlyFinishedContext() {
