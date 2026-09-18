@@ -9,6 +9,8 @@ import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractExceptio
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
 import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.ai.mcp.annotation.McpTool;
@@ -20,15 +22,19 @@ public class QueryResearchCorpusTool {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(QueryResearchCorpusTool.class);
     private static final int DEFAULT_RESULT_COUNT = 8;
+    private static final String TOOL_NAME = "query_research_corpus";
+    private static final String TIMER_NAME = "mcp.tool.duration";
 
     private final ResearchGateway researchGateway;
+    private final MeterRegistry meterRegistry;
 
-    public QueryResearchCorpusTool(ResearchGateway researchGateway) {
+    public QueryResearchCorpusTool(ResearchGateway researchGateway, MeterRegistry meterRegistry) {
         this.researchGateway = researchGateway;
+        this.meterRegistry = meterRegistry;
     }
 
     @McpTool(
-            name = "query_research_corpus",
+            name = TOOL_NAME,
             description = "Searches the biomedical research corpus and answers questions using retrieved evidence. Returns the answer and supporting sources."
     )
     public QueryResearchCorpusResponse query(
@@ -44,6 +50,8 @@ public class QueryResearchCorpusTool {
             )
             Integer resultCount) {
 
+        Timer.Sample sample = Timer.start(meterRegistry);
+        String outcome = "error";
         try {
             int effectiveResultCount = resultCount != null ? resultCount : DEFAULT_RESULT_COUNT;
 
@@ -51,6 +59,7 @@ public class QueryResearchCorpusTool {
                     new ResearchQuestion(question, effectiveResultCount)
             );
 
+            outcome = "success";
             return toResponse(answer);
         } catch (RagContractException exception) {
             LOGGER.error("Research corpus contract failure", exception);
@@ -59,6 +68,11 @@ public class QueryResearchCorpusTool {
                  InvalidResearchQuestionException exception) {
             LOGGER.warn("Research corpus query failed: {}", exception.getMessage());
             throw exception;
+        } finally {
+            sample.stop(Timer.builder(TIMER_NAME)
+                    .tag("tool", TOOL_NAME)
+                    .tag("outcome", outcome)
+                    .register(meterRegistry));
         }
     }
 

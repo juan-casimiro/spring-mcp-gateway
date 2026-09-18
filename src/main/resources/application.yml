@@ -7,6 +7,10 @@ spring:
         protocol: STREAMABLE
 
 management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics,circuitbreakers,circuitbreakerevents,retries,ratelimiters
   tracing:
     sampling:
       probability: 1.0
