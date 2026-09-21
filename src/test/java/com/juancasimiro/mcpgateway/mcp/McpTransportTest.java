@@ -18,12 +18,14 @@ import org.wiremock.spring.InjectWireMock;
 import tools.jackson.databind.json.JsonMapper;
 
 import java.time.Duration;
+import java.net.http.HttpRequest;
 import java.util.Map;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "gateway.security.api-token=test-mcp-token",
         "resilience4j.retry.instances.rag.max-attempts=1",
         "resilience4j.circuitbreaker.instances.rag.minimum-number-of-calls=100",
         "resilience4j.circuitbreaker.instances.rag.sliding-window-size=100",
@@ -43,7 +45,8 @@ class McpTransportTest {
     @BeforeEach
     void connect() {
         ragWireMock.resetAll();
-        mcpClient = McpClient.sync(HttpClientStreamableHttpTransport.builder("http://localhost:" + port).build())
+        mcpClient = McpClient.sync(HttpClientStreamableHttpTransport.builder("http://localhost:" + port)
+                .requestBuilder(HttpRequest.newBuilder().header("Authorization", "Bearer test-mcp-token")).build())
                 .requestTimeout(Duration.ofSeconds(10)).build();
         mcpClient.initialize();
     }
@@ -89,7 +92,8 @@ class McpTransportTest {
         } else {
             assertThat(json.get("insufficiencyReason").asString()).isEqualTo(reason);
         }
-        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query")).withRequestBody(equalToJson("""
+        ragWireMock.verify(1, postRequestedFor(urlEqualTo("/query")).withHeader("Authorization", absent())
+                .withRequestBody(equalToJson("""
                 {"question":"test question","n_results":8,"use_bm25":false,"use_query_rewriting":false}
                 """)));
     }

@@ -79,6 +79,69 @@ this to the bundled Jaeger container — see
 
 Tracing samples all requests by default. See [Observability](#observability) for the Actuator endpoints, metrics, and RAG-specific span attributes.
 
+## Authentication
+
+Authentication is enabled for `/mcp` and the exposed Actuator endpoints, except
+`/actuator/health`. Docker and local Java execution both use the public demo token
+`local-demo-token` by default. No credential setup or additional service is needed.
+Send this header on **every** protected request, including within an MCP session:
+
+```text
+Authorization: Bearer local-demo-token
+```
+
+Missing, malformed, or incorrect credentials return `401 Unauthorized` with a
+`WWW-Authenticate: Bearer` challenge, before any RAG call. Tokens in query strings
+are not accepted. The gateway never forwards your token to the RAG service.
+
+This is an academic shared-token demonstration, **not MCP OAuth authorization**:
+there is no login, discovery, token issuance, user identity, or expiration. The
+configured token is compared locally in memory using `MessageDigest.isEqual`.
+A startup warning identifies use of the public demo credential without printing it.
+Anyone who knows the demo value can authenticate; keep the demo on localhost.
+For deployment beyond localhost, use a private token and HTTPS.
+
+### Optional: use a private token
+
+Generate a random value and start the stack from the same shell:
+
+```bash
+export MCP_API_TOKEN="$(openssl rand -hex 32)"
+docker compose up --build
+```
+
+For local Java execution, use the same exported variable with
+`./mvnw spring-boot:run`. With `docker run`, pass `-e MCP_API_TOKEN` to forward it.
+Use your chosen token in Inspector instead of the demo value. Keep it in your
+chosen local secret storage if you want to reuse it; generating another value
+creates a different token. Do not commit private tokens or paste them into logs.
+
+Compose also reads `MCP_API_TOKEN` from a local `.env` file (ignored by Git).
+Plain Java execution does not automatically load `.env`; export the variable.
+A configured empty/blank token prevents startup. Only one token is accepted: an
+override replaces the demo value. To rotate it, change the variable and recreate
+the gateway (`docker compose up -d --force-recreate gateway`) or restart the local
+Java process. Existing MCP sessions still need the new token on their next request.
+
+### Quick authentication checks
+
+With the gateway running and the default demo token:
+
+```bash
+# Public health check: 200 when healthy; does not call the RAG service.
+curl -i http://localhost:8080/actuator/health
+
+# Protected MCP request without credentials: 401.
+curl -i -X POST http://localhost:8080/mcp
+
+# Valid credentials on a protected endpoint: 200.
+curl -i -H 'Authorization: Bearer local-demo-token' \
+  http://localhost:8080/actuator/metrics
+```
+
+Use [MCP Inspector](#verify-with-mcp-inspector) below to exercise initialization,
+tool discovery, and a complete tool call.
+
 ## Build and run
 
 Build the application:
@@ -233,12 +296,19 @@ env vars for you. Tear down with `docker compose down`.
 3. In another terminal, start MCP Inspector:
 
    ```bash
-   npx @modelcontextprotocol/inspector
+   npx @modelcontextprotocol/inspector@2.6.0
    ```
 
-4. In Inspector, select **Streamable HTTP** and connect to `http://localhost:8080/mcp`.
-5. Open **Tools** and confirm that `query_research_corpus` is listed.
-6. Invoke the tool with:
+4. In Inspector 2.6.0, choose **Add Servers → Add manually**, enter a server ID
+   (for example `research-gateway`), choose **streamable-http**, and enter
+   `http://localhost:8080/mcp`. Click **Add**.
+5. On that server's card, open **Settings → Custom Headers → + Add Header**.
+   Set the name to `Authorization` and the value to `Bearer local-demo-token`
+   (or `Bearer <your-private-token>` if overridden). Close Settings, then turn
+   on the server's connection switch. Leave **Protocol Era** at **Legacy**.
+   Do not configure OAuth for this static-token demo.
+6. Open **Tools** and confirm that `query_research_corpus` is listed.
+7. Invoke the tool with:
 
    ```json
    {
@@ -250,6 +320,10 @@ env vars for you. Tear down with `docker compose down`.
    `resultCount` is optional and defaults to `8`.
 
 The end-to-end check succeeds when Inspector connects, discovers the tool, and the invocation reaches the upstream FastAPI service and returns a grounded `answer`, ordered `sources`, `contextSufficient`, and `insufficiencyReason`.
+
+If you connect before adding the header, Inspector may attempt OAuth discovery
+and mark the connection **Failed**. Add the custom header and reconnect; no OAuth
+server is required. These instructions use Inspector 2.6.0 (Node.js 22.19+).
 
 ## Observability
 
@@ -270,9 +344,11 @@ Exposed over HTTP on the application port (`8080` by default):
 | `/actuator/retries` | The `rag` retry instance |
 | `/actuator/ratelimiters` | The `rag` rate limiter |
 
-These endpoints are unauthenticated and the gateway has no auth layer, so
-avoid publishing the port beyond localhost. Docker Compose publishes it on
-`127.0.0.1` only.
+Only `/actuator/health` is public and omits component details. All other endpoints
+require the same bearer token as `/mcp`. Docker Compose publishes the gateway on
+`127.0.0.1` only. The upstream RAG service still publishes port `8000` separately;
+callers can bypass gateway authentication through that port. Reducing that exposure
+is tracked separately in [JUA-90](https://linear.app/juan-casimiro-agent/issue/JUA-90/bind-the-rag-demos-published-port-to-localhost).
 
 ### Metrics
 
@@ -315,7 +391,8 @@ and search Jaeger for the `rag.query` operation in service `spring-mcp-gateway`.
 2. Read the timer:
 
    ```bash
-   curl -s 'http://localhost:8080/actuator/metrics/mcp.tool.duration?tag=tool:query_research_corpus&tag=outcome:success'
+   curl -s -H 'Authorization: Bearer local-demo-token' \
+     'http://localhost:8080/actuator/metrics/mcp.tool.duration?tag=tool:query_research_corpus&tag=outcome:success'
    ```
 
    ```json

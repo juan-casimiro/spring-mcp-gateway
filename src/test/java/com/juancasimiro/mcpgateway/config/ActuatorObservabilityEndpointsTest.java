@@ -19,7 +19,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static org.assertj.core.api.Assertions.assertThat;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+        properties = "gateway.security.api-token=test-actuator-token")
 @EnableWireMock(@ConfigureWireMock(name = "rag-service", baseUrlProperties = "rag.base-url"))
 class ActuatorObservabilityEndpointsTest {
 
@@ -39,7 +40,8 @@ class ActuatorObservabilityEndpointsTest {
     @BeforeEach
     void setUp() {
         ragWireMock.resetAll();
-        actuatorClient = RestClient.create("http://localhost:" + port);
+        actuatorClient = RestClient.builder().baseUrl("http://localhost:" + port)
+                .defaultHeader("Authorization", "Bearer test-actuator-token").build();
     }
 
     @Test

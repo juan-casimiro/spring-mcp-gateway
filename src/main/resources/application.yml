@@ -6,7 +6,15 @@ spring:
       server:
         protocol: STREAMABLE
 
+gateway:
+  security:
+    api-token: ${MCP_API_TOKEN:local-demo-token}
+
 management:
+  endpoint:
+    health:
+      show-details: never
+      show-components: never
   endpoints:
     web:
       exposure:

@@ -27,6 +27,7 @@ services:
       - "127.0.0.1:8080:8080"
     environment:
       RAG_BASE_URL: http://research-assistant:8000
+      MCP_API_TOKEN: ${MCP_API_TOKEN-local-demo-token}
       OTEL_TRACING_EXPORT_ENABLED: "true"
       OTEL_EXPORTER_OTLP_TRACES_ENDPOINT: http://jaeger:4318/v1/traces
     depends_on:

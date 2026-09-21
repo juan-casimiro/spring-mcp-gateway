@@ -21,6 +21,10 @@
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-actuator</artifactId>
 		</dependency>
 		<dependency>
@@ -187,6 +191,7 @@
 								<param>com.juancasimiro.mcpgateway.application.research.ResearchQuestion</param>
 								<param>com.juancasimiro.mcpgateway.integration.rag.RagClientRequestExecutor</param>
 								<param>com.juancasimiro.mcpgateway.mcp.QueryResearchCorpusTool</param>
+								<param>com.juancasimiro.mcpgateway.config.StaticTokenIntrospector</param>
 							</targetClasses>
 							<targetTests>
 								<param>com.juancasimiro.mcpgateway.*Test</param>
