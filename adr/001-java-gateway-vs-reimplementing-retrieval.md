@@ -29,7 +29,8 @@ that policy out of the retrieval service:
   instead of exposing them.
 - **Security:** a single ingress for MCP clients; input is validated in
   `ResearchQuestion` before any upstream call; the rate limiter is a spend
-  backstop ([ADR-003](003-resilience-policy.md)). Auth belongs here.
+  backstop ([ADR-003](003-resilience-policy.md)). Static bearer authentication
+  is enforced here before MCP requests reach the tools.
 - **Resilience and observability:** retry, circuit breaker and rate limiter
   run in a separate process from the work they protect, and one trace spans
   the Java/Python boundary.
@@ -45,7 +46,13 @@ support. Option A would have been viable.
 - One extra network hop; on the README trace, 3.40 s of 3.44 s is spent in
   the RAG service.
 - Two services to deploy, with an HTTP contract guarded by WireMock tests.
-- Known gaps: no authentication yet; the RAG service's own compose file
+- Authentication is an academic Spring Security bearer-token demonstration:
+  one configured token, a public demo default for one-command startup, and an
+  optional runtime override. Health remains public; other exposed Actuator
+  endpoints require the same credential. This is not MCP OAuth authorization:
+  no discovery/login, per-user permissions, expiry, or token issuance. A private
+  token and HTTPS are necessary before exposing the gateway beyond localhost.
+- Known gaps: the RAG service's own compose file
   publishes port `8000` on all interfaces, so it is not isolated behind the
   gateway; multiple gateway instances are untested (per-process rate limiter,
   session-based Streamable HTTP transport).

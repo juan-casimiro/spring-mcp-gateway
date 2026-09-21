@@ -133,20 +133,21 @@ definitions separate. Coverage and CRAP cannot establish assertion strength.
 
 ```sh
 ./mvnw -Pmutation clean test-compile pitest:mutationCoverage
-# Broader diagnostic pass on the same three classes:
+# Broader diagnostic pass on the same four classes:
 ./mvnw -Pmutation -Dmutators=STRONGER,INLINE_CONSTS clean test-compile pitest:mutationCoverage
 ```
 
 PIT 1.30.0 with its JUnit platform plugin 1.2.3 mutates `ResearchQuestion`,
-`RagClientRequestExecutor`, and `QueryResearchCorpusTool`, using the deterministic
+`RagClientRequestExecutor`, `QueryResearchCorpusTool`, and `StaticTokenIntrospector`, using the deterministic
 `*Test` classes. `RagClientIT` is excluded by that selection. PIT's default
 mutators and filters are retained. Reports are in `target/pit-reports`.
 Run separately from the quality profile to keep JaCoCo instrumentation out of
 PIT, and use `clean` to avoid reusing class files from a previous compiler run.
 
 The selected classes contain the main validation (`ResearchQuestion`), HTTP/transport
-classification (`RagClientRequestExecutor`), and MCP mapping (`QueryResearchCorpusTool`)
-logic. `RagClient` is deliberately outside the current mutation scope: it is a small
+classification (`RagClientRequestExecutor`), MCP mapping (`QueryResearchCorpusTool`),
+and bearer-token comparison (`StaticTokenIntrospector`) logic. PIT cannot observe that
+the comparison is constant-time, so that property is not mutation-tested. `RagClient` is deliberately outside the current mutation scope: it is a small
 delegating wrapper whose circuit-open and rate-limit exception translations are
 already exercised indirectly by Spring/WireMock resilience and rate-limit tests.
 That is behavioural coverage, not a claim that the wrapper has been mutation-tested;
