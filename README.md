@@ -10,6 +10,23 @@ The gateway publishes MCP tools over Streamable HTTP. MCP-facing models are mapp
 MCP client → MCP tool → ResearchGateway → RagClient → FastAPI /query
 ```
 
+## One request, one trace
+
+![Jaeger trace of one query_research_corpus call: the gateway's http post /mcp span contains a rag.query span, whose outbound http post continues into the FastAPI service's POST /query span. The rag.query span is expanded to show its rag.* attributes.](docs/images/observability-trace.png)
+
+One `query_research_corpus` call (the CT-FFR question from
+[Verify with MCP Inspector](#verify-with-mcp-inspector)) in Jaeger. The gateway's
+`rag.query` span covers the whole query, retries included, and carries what a
+generic HTTP trace would not: `rag.n_results.requested` / `rag.n_results.returned`,
+`rag.context_sufficient` and `rag.circuit_breaker.state`. Its outbound HTTP call
+continues into the FastAPI service's `POST /query` span under the same trace ID,
+so the trace crosses the Java/Python boundary; 3.40 s of the 3.44 s total is
+inside the RAG service. Four internal ASGI spans under `POST /query` are
+collapsed.
+
+Reproduce it with the [Docker Compose stack](#docker-compose-full-stack); the
+endpoints, metrics and attributes are detailed under [Observability](#observability).
+
 ## MCP tools
 
 ### `query_research_corpus`
@@ -284,9 +301,11 @@ Values are recorded as strings. The `rag.*` namespace is deliberately custom:
 the [OpenTelemetry GenAI conventions](https://opentelemetry.io/docs/specs/semconv/registry/attributes/gen-ai/)
 (still experimental) define `gen_ai.retrieval.*` and `gen_ai.tool.*`, but nothing
 that covers result counts, context sufficiency or breaker state. A failed call
-is marked as an error on the span. To see them in Jaeger, run the
-[Docker Compose stack](#docker-compose-full-stack), invoke the tool, and search
-for the `rag.query` operation in service `spring-mcp-gateway`.
+is marked as an error on the span (`otel.status_code=ERROR`); each retry attempt
+appears as its own `http post` span beneath the single `rag.query`. The
+[screenshot above](#one-request-one-trace) shows a successful call. To see your
+own, run the [Docker Compose stack](#docker-compose-full-stack), invoke the tool,
+and search Jaeger for the `rag.query` operation in service `spring-mcp-gateway`.
 
 ### Try it: inspect the tool timer
 
