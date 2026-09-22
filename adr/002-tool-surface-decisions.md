@@ -33,49 +33,21 @@ endpoints, not the RAG service's.
 
 ### 2. `insufficiency_reason` stays exposed for transparency, but is not a routing signal
 
-`insufficiency_reason` is a free-text field the RAG service's own
-`QueryResponse` and `GroundedAnswer` models mark explicitly as
-*"Human-readable diagnostic only — not a stable routing signal. Consumers
-must branch on `context_sufficient`, never on this text"*
-(`ai-research-assistant/main.py:222-223,246-247`). As of
-[JUA-91](https://linear.app/juan-casimiro-agent/issue/JUA-91/clarify-and-enforce-insufficiency-reason-contract-in-rag-responses)
-(`ai-research-assistant#13`, merged 2026-09-22), that contract is enforced
-server-side, not just documented: the RAG service normalizes the LLM's
-raw output before responding, discarding any reason returned alongside
-`context_sufficient=true` (`main.py:449-456`). Local models such as Ollama
-were observed violating the structured-output intent and emitting a
-reason even when context was marked sufficient; the RAG service now
-guarantees `insufficiency_reason` is `null` whenever `context_sufficient`
-is `true`, regardless of what the underlying model produced. The gateway
-forwards the (now-normalized) field unchanged through `RagQueryResponse`
-→ `ResearchAnswer` → `QueryResearchCorpusResponse`, and it reaches the
-MCP client as-is.
+`insufficiency_reason` is a free-text field forwarded unchanged from the
+RAG service through `RagQueryResponse` → `ResearchAnswer` →
+`QueryResearchCorpusResponse` to the MCP client. The gateway does not
+read or branch on it anywhere in its own logic; where it needs a stable
+outcome for observability, it uses the boolean `context_sufficient`
+instead (tagged on the RAG-call span and the tool's timer).
 
-The gateway does not treat it as signal anywhere in its own logic. Where
-the gateway needs a stable, low-cardinality outcome for observability, it
-already uses the boolean `context_sufficient` — tagged directly onto the
-RAG-call span (`rag.context_sufficient` in `RagClient`) and onto the
-`mcp.tool.duration` timer (`QueryResearchCorpusTool`). `insufficiency_reason`
-is not read by any gateway code path.
-
-**Decision:** keep forwarding the field. The gateway's tool surface is
-aimed at researchers evaluating retrieval quality as much as at the MCP
-client itself, and for that audience the field adds transparency: when
-`context_sufficient` is `false`, the one-sentence reason lets a person
-see *why* the corpus fell short (wrong topic, missing detail, etc.)
-without digging into RAG-service logs. That is a legitimate use — a human
-reading the answer, not a client branching on it. The two must not be
-conflated: do not build any gateway behaviour on the field's contents,
-and do not treat its wording as stable — it is one LLM-generated
-sentence, not a structured value, and its own producer disclaims it as
-non-authoritative. Nothing in this gateway's contract promises an MCP
-client anything beyond that one sentence — the enforced invariant is
-`null` when sufficient, a short diagnostic when not; wording and content
-otherwise remain the model's own output. No gateway code or contract
-change was made for this decision; `insufficiency_reason` was already
-exposed and already unused by gateway logic. JUA-91 strengthened the
-upstream guarantee this entry relies on, but did not change what the
-gateway does with the field.
+**Decision:** keep exposing the field for transparency — it lets a
+researcher see why the corpus fell short — but it must never be used for
+branching, by the gateway or by any MCP client; only `context_sufficient`
+is the signal. The MCP contract specifies `insufficiency_reason` is
+`null`/absent whenever `context_sufficient` is `true`
+([JUA-91](https://linear.app/juan-casimiro-agent/issue/JUA-91/clarify-and-enforce-insufficiency-reason-contract-in-rag-responses)
+enforces this upstream in `ai-research-assistant`). No gateway code
+change was needed.
 
 ### 3. Retrieval knobs are pinned, not exposed
 
