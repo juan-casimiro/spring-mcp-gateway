@@ -211,13 +211,17 @@ injected at runtime using your deployment's secret mechanism; Spring config-tree
 imports can read mounted secret files. Do not bake them into the image.
 
 The default container port is `8080`. If changing ports or the Actuator path,
-adjust the port mapping and set `HEALTHCHECK_URL` to the **internal** health URL:
+adjust the port mapping and set `HEALTHCHECK_URL` to the **internal** health URL.
+The public health URL follows `management.endpoints.web.base-path` and any
+`management.endpoints.web.path-mapping.health` override; other endpoints still
+require a token. For example, to use `/manage/health` on port `9090`:
 
 ```bash
 docker run -d --name mcp-gateway-custom \
   -p 127.0.0.1:8081:9090 \
   -e SERVER_PORT=9090 \
-  -e HEALTHCHECK_URL=http://localhost:9090/actuator/health \
+  -e MANAGEMENT_ENDPOINTS_WEB_BASE_PATH=/manage \
+  -e HEALTHCHECK_URL=http://localhost:9090/manage/health \
   -e RAG_BASE_URL=http://rag-service:8000 \
   spring-mcp-gateway:local
 ```
@@ -285,6 +289,9 @@ OTLP/gRPC (port `4317`) — `docker-compose.yml` sets each service's exporter
 env vars for you. Tear down with `docker compose down`.
 
 ## Verify with MCP Inspector
+
+If the [Docker Compose stack](#docker-compose-full-stack) is already running,
+skip to step 3. Steps 1–2 are only for starting the services locally without Compose.
 
 1. Start `ai-research-assistant` by following its linked README above.
 2. Start the gateway:
