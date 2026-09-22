@@ -31,7 +31,7 @@ accountability for who did it. This is independent of
 gateway-side bearer authentication, which protects the gateway's own
 endpoints, not the RAG service's.
 
-### 2. `insufficiency_reason` stays exposed, but is not a routing signal
+### 2. `insufficiency_reason` stays exposed for transparency, but is not a routing signal
 
 `insufficiency_reason` is a free-text field the RAG service's own
 `QueryResponse` and `GroundedAnswer` models mark explicitly as
@@ -47,16 +47,21 @@ RAG-call span (`rag.context_sufficient` in `RagClient`) and onto the
 `mcp.tool.duration` timer (`QueryResearchCorpusTool`). `insufficiency_reason`
 is not read by any gateway code path.
 
-**Decision:** keep forwarding the field as human-readable context for
-whoever consumes the tool's answer, but do not build any gateway
-behaviour on its contents, and do not treat its wording as stable — it is
-one LLM-generated sentence, not a structured value, and its own producer
-disclaims it as non-authoritative. An MCP client is free to read it, but
-nothing in this gateway's contract promises it means anything beyond that
-one sentence. No code or contract change was made for this decision;
-`insufficiency_reason` was already exposed and already unused by gateway
-logic — this entry records that as the deliberate position, not a change
-in behaviour.
+**Decision:** keep forwarding the field. The gateway's tool surface is
+aimed at researchers evaluating retrieval quality as much as at the MCP
+client itself, and for that audience the field adds transparency: when
+`context_sufficient` is `false`, the one-sentence reason lets a person
+see *why* the corpus fell short (wrong topic, missing detail, etc.)
+without digging into RAG-service logs. That is a legitimate use — a human
+reading the answer, not a client branching on it. The two must not be
+conflated: do not build any gateway behaviour on the field's contents,
+and do not treat its wording as stable — it is one LLM-generated
+sentence, not a structured value, and its own producer disclaims it as
+non-authoritative. Nothing in this gateway's contract promises an MCP
+client anything beyond that one sentence. No code or contract change was
+made for this decision; `insufficiency_reason` was already exposed and
+already unused by gateway logic — this entry records that as the
+deliberate position, not a change in behaviour.
 
 ### 3. Retrieval knobs are pinned, not exposed
 
@@ -102,10 +107,12 @@ adding the corresponding RAG endpoint."
 - The tool surface stays at one tool, `query_research_corpus`, with two
   caller-controlled parameters (`question`, `resultCount`) and no write
   path.
-- `insufficiency_reason` remains in the MCP response contract; a future
-  change to omit it, or to stop the RAG service from returning it at all,
-  is a separate decision against a separate contract (this gateway's MCP
-  response, or `ai-research-assistant`'s `/query` response) and is not
+- `insufficiency_reason` remains in the MCP response contract as a
+  transparency aid for researchers reading answers, not as a signal for
+  clients to act on; a future change to omit it, or to stop the RAG
+  service from returning it at all, is a separate decision against a
+  separate contract (this gateway's MCP response, or
+  `ai-research-assistant`'s `/query` response) and is not
   made here.
 - `use_bm25` and `use_query_rewriting` stay pinned off. If a future corpus
   or evaluation shows a benefit, revisiting this is a configuration change
