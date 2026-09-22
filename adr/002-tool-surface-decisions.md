@@ -41,10 +41,11 @@ outcome for observability, it uses the boolean `context_sufficient`
 instead (tagged on the RAG-call span and the tool's timer).
 
 **Decision:** keep exposing the field for transparency — it lets a
-researcher see why the corpus fell short — but it must never be used for
-branching, by the gateway or by any MCP client; only `context_sufficient`
-is the signal. The MCP contract specifies `insufficiency_reason` is
-`null`/absent whenever `context_sufficient` is `true`
+researcher see why the corpus fell short. `insufficiency_reason` is
+diagnostic, human-readable context; MCP clients should use
+`context_sufficient` for programmatic decisions and should not branch on
+the text of `insufficiency_reason`. The MCP contract specifies
+`insufficiency_reason` is `null` whenever `context_sufficient` is `true`
 ([JUA-91](https://linear.app/juan-casimiro-agent/issue/JUA-91/clarify-and-enforce-insufficiency-reason-contract-in-rag-responses)
 enforces this upstream in `ai-research-assistant`). No gateway code
 change was needed.
@@ -59,14 +60,14 @@ latter bounded 1–20). `RagClientRequestExecutor.toRequest` pins
 
 This follows the RAG service's own evaluation
 ([`ai-research-assistant` ADR-001](https://github.com/juan-casimiro/ai-research-assistant/blob/main/adr/001-chunking-and-retrieval.md),
-"Hybrid Search Evaluation"): against the golden QA set, vector-only
-retrieval scored 101/103 at n=8; enabling BM25 alone scored 100/103, with
-one attributable regression, and query rewriting alone changed zero
-verdicts. The RAG service already defaults both flags off for this
-reason. Exposing them as MCP tool parameters would hand a caller two
-knobs with no demonstrated benefit and one demonstrated regression on the
-only corpus they have been evaluated against — dead knobs, not a
-meaningful choice.
+"Hybrid Search Evaluation," re-confirmed on the expanded corpus): against
+the golden QA set, vector-only retrieval scores 109/111 at n=8; enabling
+BM25 alone scores 108/111, with one attributable regression, and query
+rewriting alone changes zero verdicts. The RAG service already defaults
+both flags off for this reason. Exposing them as MCP tool parameters
+would hand a caller two knobs with no demonstrated benefit and one
+demonstrated regression on the only corpus they have been evaluated
+against — dead knobs, not a meaningful choice.
 
 ### 4. `list_corpus_documents` is deferred
 
@@ -93,13 +94,13 @@ adding the corresponding RAG endpoint."
 - The tool surface stays at one tool, `query_research_corpus`, with two
   caller-controlled parameters (`question`, `resultCount`) and no write
   path.
-- `insufficiency_reason` remains in the MCP response contract as a
-  transparency aid for researchers reading answers, not as a signal for
-  clients to act on; a future change to omit it, or to stop the RAG
-  service from returning it at all, is a separate decision against a
-  separate contract (this gateway's MCP response, or
-  `ai-research-assistant`'s `/query` response) and is not
-  made here.
+- `insufficiency_reason` remains in the MCP response contract as
+  diagnostic, human-readable context for researchers; MCP clients should
+  use `context_sufficient` for programmatic decisions, not the text of
+  this field. A future change to omit it, or to stop the RAG service from
+  returning it at all, is a separate decision against a separate contract
+  (this gateway's MCP response, or `ai-research-assistant`'s `/query`
+  response) and is not made here.
 - `use_bm25` and `use_query_rewriting` stay pinned off. If a future corpus
   or evaluation shows a benefit, revisiting this is a configuration change
   in `RagClientRequestExecutor`, not a redesign.
