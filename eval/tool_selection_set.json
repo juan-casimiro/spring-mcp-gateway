@@ -1,0 +1,44 @@
+{
+  "schema_notes": [
+    "expected_tool_call is true when query_research_corpus should be called for this question, false when it should not.",
+    "trap_class groups questions by what kind of misroute they're designed to surface; it is not sent to the model, only used for the per-trap-class accuracy breakdown in eval_tool_selection.py.",
+    "off_corpus_biomed convention: an in-domain biomedical question the ai-research-assistant corpus may not actually cover is still expected_tool_call=true. The tool description promises to report contextSufficient=false for coverage gaps; the client cannot know corpus contents in advance and should still call the tool based on topical intent, mirroring the off_corpus_biomed convention in ai-agent-module's classification_set.json.",
+    "biomed_general_knowledge: clinically-flavored questions answerable as common knowledge, not requiring a peer-reviewed source lookup. expected_tool_call=false, though this is the most genuinely debatable trap class in the set — a stricter reading of 'biomedical' could argue the other way. Worth watching in the per-trap-class breakdown.",
+    "calculation_in_biomed_clothing / arithmetic dressed in medical vocabulary: expected_tool_call=false, since these are pure arithmetic that the corpus tool cannot perform.",
+    "document_shaped_non_biomed: questions phrased to want a sourced/document-grounded answer, but in a domain the tool description explicitly excludes (legal, physics, humanities). expected_tool_call=false."
+  ],
+  "questions": [
+    {"id": "t01", "question": "What AUC did the CNN model achieve for detecting atrial fibrillation from 12-lead ECGs?", "trap_class": "unambiguous_biomed", "expected_tool_call": true},
+    {"id": "t02", "question": "What sample size was used in the diabetes CGM management study's clinician comparison arm?", "trap_class": "unambiguous_biomed", "expected_tool_call": true},
+    {"id": "t03", "question": "According to the oncology literature reviewed, what 5-year survival rate is reported for stage II colorectal cancer?", "trap_class": "unambiguous_biomed", "expected_tool_call": true},
+    {"id": "t04", "question": "What dosing regimen did the cardiology trial use for the beta-blocker arm?", "trap_class": "unambiguous_biomed", "expected_tool_call": true},
+    {"id": "t05", "question": "What biomarkers were significantly associated with treatment response in the reviewed diabetes study?", "trap_class": "unambiguous_biomed", "expected_tool_call": true},
+
+    {"id": "t06", "question": "What is 15% of 340, rounded to the nearest whole number?", "trap_class": "unambiguous_calculation", "expected_tool_call": false},
+    {"id": "t07", "question": "If a train travels 60 miles in 45 minutes, what is its average speed in mph?", "trap_class": "unambiguous_calculation", "expected_tool_call": false},
+    {"id": "t08", "question": "What is the square root of 2025?", "trap_class": "unambiguous_calculation", "expected_tool_call": false},
+    {"id": "t09", "question": "Convert 98.6 degrees Fahrenheit to Celsius.", "trap_class": "unambiguous_calculation", "expected_tool_call": false},
+
+    {"id": "t10", "question": "What's the capital of Peru?", "trap_class": "unambiguous_general", "expected_tool_call": false},
+    {"id": "t11", "question": "Who wrote the novel Don Quixote?", "trap_class": "unambiguous_general", "expected_tool_call": false},
+    {"id": "t12", "question": "What year did World War II end?", "trap_class": "unambiguous_general", "expected_tool_call": false},
+    {"id": "t13", "question": "Can you recommend a good strategy for learning a new language?", "trap_class": "unambiguous_general", "expected_tool_call": false},
+
+    {"id": "t14", "question": "What did the reviewed literature report about mRNA vaccine efficacy against seasonal influenza?", "trap_class": "off_corpus_biomed", "expected_tool_call": true},
+    {"id": "t15", "question": "What surgical outcomes were reported for laparoscopic versus open appendectomy?", "trap_class": "off_corpus_biomed", "expected_tool_call": true},
+    {"id": "t16", "question": "What did the studies find about SSRIs' effect on treatment-resistant depression?", "trap_class": "off_corpus_biomed", "expected_tool_call": true},
+
+    {"id": "t17", "question": "What is considered a normal resting heart rate for an adult?", "trap_class": "biomed_general_knowledge", "expected_tool_call": false},
+    {"id": "t18", "question": "What does the abbreviation 'BP' stand for in a medical context?", "trap_class": "biomed_general_knowledge", "expected_tool_call": false},
+    {"id": "t19", "question": "What's the normal range for human body temperature?", "trap_class": "biomed_general_knowledge", "expected_tool_call": false},
+    {"id": "t20", "question": "Why do doctors recommend drinking more water when you have a fever?", "trap_class": "biomed_general_knowledge", "expected_tool_call": false},
+
+    {"id": "t21", "question": "If a patient's dose is 5mg per kg and they weigh 70kg, what's the total dose in mg?", "trap_class": "calculation_in_biomed_clothing", "expected_tool_call": false},
+    {"id": "t22", "question": "A clinical trial enrolled 240 patients and 18% withdrew — how many patients withdrew?", "trap_class": "calculation_in_biomed_clothing", "expected_tool_call": false},
+    {"id": "t23", "question": "If a patient's heart rate rises from 72 to 90 bpm, what is the percentage increase?", "trap_class": "calculation_in_biomed_clothing", "expected_tool_call": false},
+
+    {"id": "t24", "question": "What did the reviewed case law say about the standard for medical malpractice liability?", "trap_class": "document_shaped_non_biomed", "expected_tool_call": false},
+    {"id": "t25", "question": "According to the physics literature reviewed, what is the measured value of the fine-structure constant?", "trap_class": "document_shaped_non_biomed", "expected_tool_call": false},
+    {"id": "t26", "question": "What do the humanities sources say about the ethical critique of utilitarianism?", "trap_class": "document_shaped_non_biomed", "expected_tool_call": false}
+  ]
+}
