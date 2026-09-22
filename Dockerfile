@@ -35,9 +35,10 @@ COPY --from=builder /build/extracted/application/ ./
 USER 10001:10001
 EXPOSE 8080
 
-# Override HEALTHCHECK_URL when changing the management port, path, or scheme.
+# Follows SERVER_PORT automatically; only override HEALTHCHECK_URL for a
+# different scheme or host.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl --fail --silent --show-error --max-time 4 --noproxy '*' "${HEALTHCHECK_URL:-http://localhost:8080/actuator/health}" > /dev/null || exit 1
+    CMD curl --fail --silent --show-error --max-time 4 --noproxy '*' "${HEALTHCHECK_URL:-http://localhost:${SERVER_PORT:-8080}/actuator/health}" > /dev/null || exit 1
 
 # Exec form makes Java PID 1 and allows normal JVM signal handling.
 ENTRYPOINT ["java", "-jar", "application.jar"]

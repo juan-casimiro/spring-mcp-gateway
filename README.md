@@ -215,17 +215,19 @@ checks at `/actuator/health`. Keep these paths unchanged; custom Actuator paths
 are outside the supported demo configuration.
 
 The default container port is `8080`. If changing ports, adjust the port mapping
-and set `HEALTHCHECK_URL` to the **internal** health URL. For example, to use
-port `9090`:
+and set `SERVER_PORT`; the built-in healthcheck follows it automatically. For
+example, to use port `9090`:
 
 ```bash
 docker run -d --name mcp-gateway-custom \
   -p 127.0.0.1:8081:9090 \
   -e SERVER_PORT=9090 \
-  -e HEALTHCHECK_URL=http://localhost:9090/actuator/health \
   -e RAG_BASE_URL=http://rag-service:8000 \
   spring-mcp-gateway:local
 ```
+
+Only set `HEALTHCHECK_URL` to override the healthcheck's scheme or host; it
+takes precedence over `SERVER_PORT` when set.
 
 ### Verify and stop
 
