@@ -15,7 +15,14 @@ jobs:
     name: Validate PR title (Conventional Commits)
     runs-on: ubuntu-latest
     steps:
-      - name: Check PR title
-        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+      - name: Check PR title matches Conventional Commits
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(build|chore|ci|docs|feat|fix|perf|refactor|revert|style|test)(\([a-z0-9._-]+\))?!?: .+[^.]$'
+          if ! echo "$PR_TITLE" | grep -Eq "$pattern"; then
+            echo "::error::PR title '$PR_TITLE' does not follow Conventional Commits format: type(scope): description"
+            echo "Expected pattern: $pattern"
+            exit 1
+          fi
+          echo "PR title OK: $PR_TITLE"
