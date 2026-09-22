@@ -161,6 +161,7 @@ def call_claude(question: str, tool_spec: dict, api_key: str, model: str) -> boo
     payload = {
         "model": model,
         "max_tokens": 300,
+        "temperature": 0,  # deterministic tool-choice, not creative sampling
         "tools": [tool_spec],
         "messages": [{"role": "user", "content": question}],
     }
@@ -186,28 +187,62 @@ def verdict(expected_tool_call: bool, actual_tool_call: bool) -> str:
     return "pass" if expected_tool_call == actual_tool_call else "fail"
 
 
+def compute_stats(results: list[dict]) -> dict:
+    """Pure aggregation over eval results. Accuracy is computed only over
+    scored (pass/fail) entries — an 'error' entry means the question was
+    never actually evaluated and must not silently count as a fail, or
+    inflate the denominator as if it were."""
+    scored = [r for r in results if r["verdict"] != "error"]
+    errored = [r for r in results if r["verdict"] == "error"]
+    correct = sum(r["verdict"] == "pass" for r in scored)
+
+    by_trap: dict[str, dict] = {}
+    for r in scored:
+        trap = by_trap.setdefault(r["trap_class"], {"correct": 0, "total": 0})
+        trap["total"] += 1
+        if r["verdict"] == "pass":
+            trap["correct"] += 1
+
+    return {
+        "total_questions": len(results),
+        "evaluated": len(scored),
+        "correct": correct,
+        "accuracy": correct / len(scored) if scored else 0.0,
+        "by_trap": by_trap,
+        "misroutes": [r for r in scored if r["verdict"] == "fail"],
+        "errored": errored,
+    }
+
+
+def exit_code_for(results: list[dict]) -> int:
+    """Non-zero whenever any question was not actually evaluated, so a run
+    where every request errors out can never look like a clean pass."""
+    return 1 if any(r["verdict"] == "error" for r in results) else 0
+
+
 def print_summary(results: list[dict]) -> None:
-    total = len(results)
-    correct = sum(r["verdict"] == "pass" for r in results)
-    accuracy = correct / total if total else 0.0
-    print(f"\nOverall accuracy: {correct}/{total} ({accuracy:.1%})\n")
+    stats = compute_stats(results)
+    print(f"\nOverall accuracy: {stats['correct']}/{stats['evaluated']} evaluated "
+          f"({stats['accuracy']:.1%}) — {stats['total_questions']} total, "
+          f"{len(stats['errored'])} errored\n")
 
-    print("Per-trap-class accuracy:")
-    by_trap: dict[str, list[dict]] = {}
-    for r in results:
-        by_trap.setdefault(r["trap_class"], []).append(r)
-    for trap in sorted(by_trap):
-        trap_results = by_trap[trap]
-        trap_correct = sum(r["verdict"] == "pass" for r in trap_results)
-        trap_total = len(trap_results)
-        print(f"  {trap:<28} {trap_correct}/{trap_total} ({trap_correct / trap_total:.1%})")
+    print("Per-trap-class accuracy (evaluated only):")
+    for trap in sorted(stats["by_trap"]):
+        trap_stats = stats["by_trap"][trap]
+        trap_accuracy = trap_stats["correct"] / trap_stats["total"] if trap_stats["total"] else 0.0
+        print(f"  {trap:<28} {trap_stats['correct']}/{trap_stats['total']} ({trap_accuracy:.1%})")
 
-    misses = [r for r in results if r["verdict"] == "fail"]
-    if misses:
-        print(f"\nMisroutes ({len(misses)}):")
-        for r in misses:
+    if stats["misroutes"]:
+        print(f"\nMisroutes ({len(stats['misroutes'])}):")
+        for r in stats["misroutes"]:
             print(f"  [{r['id']}] {r['trap_class']}: expected_tool_call={r['expected_tool_call']} "
                   f"actual_tool_call={r['actual_tool_call']}")
+            print(f"       {r['question']}")
+
+    if stats["errored"]:
+        print(f"\nErrors ({len(stats['errored'])}) — NOT included in accuracy above:")
+        for r in stats["errored"]:
+            print(f"  [{r['id']}] {r['trap_class']}: {r['error']}")
             print(f"       {r['question']}")
 
 
@@ -264,35 +299,53 @@ def main() -> int:
         print(f"[{i}/{len(questions)}] {q['id']} ({q['trap_class']:<26}) ... ", end="", flush=True)
         try:
             actual = call_claude(q["question"], tool_spec, api_key, args.model)
-        except urllib.error.URLError as exc:
-            print(f"ERROR ({exc})")
-            actual = None
-        entry = {
-            "id": q["id"],
-            "question": q["question"],
-            "trap_class": q["trap_class"],
-            "expected_tool_call": q["expected_tool_call"],
-            "actual_tool_call": actual,
-            "verdict": verdict(q["expected_tool_call"], actual) if actual is not None else "error",
-        }
+            entry = {
+                "id": q["id"],
+                "question": q["question"],
+                "trap_class": q["trap_class"],
+                "expected_tool_call": q["expected_tool_call"],
+                "actual_tool_call": actual,
+                "verdict": verdict(q["expected_tool_call"], actual),
+            }
+        except (urllib.error.URLError, json.JSONDecodeError) as exc:
+            entry = {
+                "id": q["id"],
+                "question": q["question"],
+                "trap_class": q["trap_class"],
+                "expected_tool_call": q["expected_tool_call"],
+                "actual_tool_call": None,
+                "verdict": "error",
+                "error": str(exc),
+            }
         results.append(entry)
         print(entry["verdict"].upper())
 
     print_summary(results)
 
+    stats = compute_stats(results)
     output = {
         "run_at": datetime.now(timezone.utc).isoformat(),
         "dataset": str(args.dataset),
         "gateway_url": args.gateway_url,
         "model": args.model,
         "tool_description": tool_spec["description"],
+        "total_questions": stats["total_questions"],
+        "evaluated": stats["evaluated"],
+        "errors": len(stats["errored"]),
+        "correct": stats["correct"],
+        "accuracy": stats["accuracy"],
         "results": results,
     }
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(output, indent=2))
     print(f"\nResults written to {args.out}")
 
-    return 0
+    code = exit_code_for(results)
+    if code != 0:
+        print(f"\n{len(stats['errored'])} of {stats['total_questions']} questions could not be "
+              f"evaluated due to errors — exiting non-zero. The accuracy above is partial, not a "
+              f"completed run.")
+    return code
 
 
 if __name__ == "__main__":
