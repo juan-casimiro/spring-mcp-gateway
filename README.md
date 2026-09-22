@@ -226,9 +226,6 @@ docker run -d --name mcp-gateway-custom \
   spring-mcp-gateway:local
 ```
 
-Only set `HEALTHCHECK_URL` to override the healthcheck's scheme or host; it
-takes precedence over `SERVER_PORT` when set.
-
 ### Verify and stop
 
 ```bash

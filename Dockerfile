@@ -35,10 +35,10 @@ COPY --from=builder /build/extracted/application/ ./
 USER 10001:10001
 EXPOSE 8080
 
-# Follows SERVER_PORT automatically; only override HEALTHCHECK_URL for a
-# different scheme or host.
+# The probe runs inside this container, so the host is always localhost;
+# only the port varies, and it follows SERVER_PORT automatically.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
-    CMD curl --fail --silent --show-error --max-time 4 --noproxy '*' "${HEALTHCHECK_URL:-http://localhost:${SERVER_PORT:-8080}/actuator/health}" > /dev/null || exit 1
+    CMD curl --fail --silent --show-error --max-time 4 --noproxy '*' "http://localhost:${SERVER_PORT:-8080}/actuator/health" > /dev/null || exit 1
 
 # Exec form makes Java PID 1 and allows normal JVM signal handling.
 ENTRYPOINT ["java", "-jar", "application.jar"]
