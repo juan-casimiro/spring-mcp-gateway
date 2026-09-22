@@ -2,7 +2,6 @@ package com.juancasimiro.mcpgateway.config;
 
 import jakarta.servlet.DispatcherType;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.boot.actuate.autoconfigure.endpoint.web.WebEndpointProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.authentication.ProviderManager;
@@ -23,10 +22,8 @@ public class GatewaySecurityConfiguration {
     }
 
     @Bean
-    SecurityFilterChain gatewaySecurityFilterChain(HttpSecurity http, OpaqueTokenIntrospector introspector,
-                                                  WebEndpointProperties webEndpoints) throws Exception {
-        String healthPath = webEndpoints.getBasePath() + "/"
-                + webEndpoints.getPathMapping().getOrDefault("health", "health");
+    SecurityFilterChain gatewaySecurityFilterChain(HttpSecurity http, OpaqueTokenIntrospector introspector)
+            throws Exception {
         AuthenticationEntryPoint unauthorized = (request, response, exception) -> {
             response.setHeader("WWW-Authenticate", "Bearer");
             response.setStatus(401);
@@ -44,7 +41,7 @@ public class GatewaySecurityConfiguration {
                 .authorizeHttpRequests(requests -> requests
                         // Async MCP responses and error rendering follow an already checked request.
                         .dispatcherTypeMatchers(DispatcherType.ASYNC, DispatcherType.ERROR).permitAll()
-                        .requestMatchers(healthPath).permitAll()
+                        .requestMatchers("/actuator/health").permitAll()
                         .anyRequest().authenticated())
                 .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(unauthorized))
                 .addFilterBefore(bearerFilter, BasicAuthenticationFilter.class)

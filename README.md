@@ -210,18 +210,19 @@ as `RAG_BASE_URL`, `RAG_RATE_LIMIT_FOR_PERIOD`, `OTEL_TRACING_EXPORT_ENABLED`, a
 injected at runtime using your deployment's secret mechanism; Spring config-tree
 imports can read mounted secret files. Do not bake them into the image.
 
-The default container port is `8080`. If changing ports or the Actuator path,
-adjust the port mapping and set `HEALTHCHECK_URL` to the **internal** health URL.
-The public health URL follows `management.endpoints.web.base-path` and any
-`management.endpoints.web.path-mapping.health` override; other endpoints still
-require a token. For example, to use `/manage/health` on port `9090`:
+This demo uses the default Actuator base path `/actuator`, with public health
+checks at `/actuator/health`. Keep these paths unchanged; custom Actuator paths
+are outside the supported demo configuration.
+
+The default container port is `8080`. If changing ports, adjust the port mapping
+and set `HEALTHCHECK_URL` to the **internal** health URL. For example, to use
+port `9090`:
 
 ```bash
 docker run -d --name mcp-gateway-custom \
   -p 127.0.0.1:8081:9090 \
   -e SERVER_PORT=9090 \
-  -e MANAGEMENT_ENDPOINTS_WEB_BASE_PATH=/manage \
-  -e HEALTHCHECK_URL=http://localhost:9090/manage/health \
+  -e HEALTHCHECK_URL=http://localhost:9090/actuator/health \
   -e RAG_BASE_URL=http://rag-service:8000 \
   spring-mcp-gateway:local
 ```
