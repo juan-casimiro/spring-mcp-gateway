@@ -210,14 +210,18 @@ as `RAG_BASE_URL`, `RAG_RATE_LIMIT_FOR_PERIOD`, `OTEL_TRACING_EXPORT_ENABLED`, a
 injected at runtime using your deployment's secret mechanism; Spring config-tree
 imports can read mounted secret files. Do not bake them into the image.
 
-The default container port is `8080`. If changing ports or the Actuator path,
-adjust the port mapping and set `HEALTHCHECK_URL` to the **internal** health URL:
+This demo uses the default Actuator base path `/actuator`, with public health
+checks at `/actuator/health`. Keep these paths unchanged; custom Actuator paths
+are outside the supported demo configuration.
+
+The default container port is `8080`. If changing ports, adjust the port mapping
+and set `SERVER_PORT`; the built-in healthcheck follows it automatically. For
+example, to use port `9090`:
 
 ```bash
 docker run -d --name mcp-gateway-custom \
   -p 127.0.0.1:8081:9090 \
   -e SERVER_PORT=9090 \
-  -e HEALTHCHECK_URL=http://localhost:9090/actuator/health \
   -e RAG_BASE_URL=http://rag-service:8000 \
   spring-mcp-gateway:local
 ```
@@ -285,6 +289,9 @@ OTLP/gRPC (port `4317`) — `docker-compose.yml` sets each service's exporter
 env vars for you. Tear down with `docker compose down`.
 
 ## Verify with MCP Inspector
+
+If the [Docker Compose stack](#docker-compose-full-stack) is already running,
+skip to step 3. Steps 1–2 are only for starting the services locally without Compose.
 
 1. Start `ai-research-assistant` by following its linked README above.
 2. Start the gateway:
