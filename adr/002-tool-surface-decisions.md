@@ -35,10 +35,21 @@ endpoints, not the RAG service's.
 
 `insufficiency_reason` is a free-text field the RAG service's own
 `QueryResponse` and `GroundedAnswer` models mark explicitly as
-*"debug/demo only — no consumer branches on this value"*
-(`ai-research-assistant/main.py:219,241`). The gateway forwards it
-unchanged through `RagQueryResponse` → `ResearchAnswer` →
-`QueryResearchCorpusResponse`, and it reaches the MCP client as-is.
+*"Human-readable diagnostic only — not a stable routing signal. Consumers
+must branch on `context_sufficient`, never on this text"*
+(`ai-research-assistant/main.py:222-223,246-247`). As of
+[JUA-91](https://linear.app/juan-casimiro-agent/issue/JUA-91/clarify-and-enforce-insufficiency-reason-contract-in-rag-responses)
+(`ai-research-assistant#13`, merged 2026-09-22), that contract is enforced
+server-side, not just documented: the RAG service normalizes the LLM's
+raw output before responding, discarding any reason returned alongside
+`context_sufficient=true` (`main.py:449-456`). Local models such as Ollama
+were observed violating the structured-output intent and emitting a
+reason even when context was marked sufficient; the RAG service now
+guarantees `insufficiency_reason` is `null` whenever `context_sufficient`
+is `true`, regardless of what the underlying model produced. The gateway
+forwards the (now-normalized) field unchanged through `RagQueryResponse`
+→ `ResearchAnswer` → `QueryResearchCorpusResponse`, and it reaches the
+MCP client as-is.
 
 The gateway does not treat it as signal anywhere in its own logic. Where
 the gateway needs a stable, low-cardinality outcome for observability, it
@@ -58,10 +69,13 @@ conflated: do not build any gateway behaviour on the field's contents,
 and do not treat its wording as stable — it is one LLM-generated
 sentence, not a structured value, and its own producer disclaims it as
 non-authoritative. Nothing in this gateway's contract promises an MCP
-client anything beyond that one sentence. No code or contract change was
-made for this decision; `insufficiency_reason` was already exposed and
-already unused by gateway logic — this entry records that as the
-deliberate position, not a change in behaviour.
+client anything beyond that one sentence — the enforced invariant is
+`null` when sufficient, a short diagnostic when not; wording and content
+otherwise remain the model's own output. No gateway code or contract
+change was made for this decision; `insufficiency_reason` was already
+exposed and already unused by gateway logic. JUA-91 strengthened the
+upstream guarantee this entry relies on, but did not change what the
+gateway does with the field.
 
 ### 3. Retrieval knobs are pinned, not exposed
 
