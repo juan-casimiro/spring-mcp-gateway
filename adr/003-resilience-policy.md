@@ -148,6 +148,20 @@ exception would be seen by the outer retry aspect and repeatedly call an open
 breaker. Instead, `RagClient` translates `CallNotPermittedException` into the
 gateway-owned `RagCircuitOpenException` while preserving the original cause.
 
+### Accepted limitations
+
+The RAG service's readiness check excludes the Anthropic call. A service that
+reports ready can therefore fail the single half-open probe when Anthropic is
+degraded, returning the breaker to open even if its local retrieval path is
+healthy. The real query remains the right probe because a lightweight health
+check would not test the failing path.
+
+The Python service keeps `max_tokens=1024`. Reaching that cap during structured
+output can cause a deterministic parse failure that surfaces as a retryable
+500, spending all three gateway attempts. This is accepted because observed
+answers used roughly 130–200 tokens; the limit should be revisited if truncated
+responses appear.
+
 ## Concurrency and request-volume controls
 
 ### No bulkhead
