@@ -35,7 +35,20 @@ public class QueryResearchCorpusTool {
 
     @McpTool(
             name = TOOL_NAME,
-            description = "Searches the biomedical research corpus and answers questions using retrieved evidence. Returns the answer and supporting sources."
+            description = "Answers questions using a corpus of peer-reviewed biomedical journal "
+                    + "articles. The corpus is biomedical only — no legal, physics, humanities, or "
+                    + "other non-biomedical material. Retrieves the most relevant passages for the "
+                    + "question, then returns an answer grounded only in that retrieved text, along "
+                    + "with the source documents it drew from (`sources`).\n\n"
+                    + "The response also reports `contextSufficient`: true only when the retrieved "
+                    + "passages explicitly provide the specific fact, figure, or recommendation "
+                    + "asked for — whether from a single passage or by combining several. "
+                    + "Topically related or generally relevant passages are not sufficient. When "
+                    + "false, do not override this flag based on how relevant the sources or answer "
+                    + "text appear to be. `insufficiencyReason` then gives a short, human-readable "
+                    + "note describing what the retrieved context covered instead. Treat "
+                    + "`insufficiencyReason` as explanatory text only — base any decision to retry, "
+                    + "rephrase, or stop on `contextSufficient`, never on parsing the reason text."
     )
     public QueryResearchCorpusResponse query(
             @McpToolParam(
@@ -45,7 +58,13 @@ public class QueryResearchCorpusTool {
             String question,
 
             @McpToolParam(
-                    description = "Maximum number of retrieved chunks to use; must be between 1 and 20",
+                    description = "Number of retrieved text passages (not source documents) to use "
+                            + "as context before answering. Higher values give more context — useful "
+                            + "for broad or multi-part questions — at some risk of diluting relevance; "
+                            + "lower values keep context tighter, better for narrow factual lookups. "
+                            + "Must be between 1 and 20; defaults to 8 if omitted. Does not control "
+                            + "how many source documents appear in the response, since several "
+                            + "passages can come from the same document.",
                     required = false
             )
             Integer resultCount) {
