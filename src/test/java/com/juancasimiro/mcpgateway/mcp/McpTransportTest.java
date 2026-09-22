@@ -62,12 +62,24 @@ class McpTransportTest {
     void discoversToolWithRequiredQuestionOptionalCountAndDocumentedBounds() {
         assertThat(mcpClient.listTools().tools()).singleElement().satisfies(tool -> {
             assertThat(tool.name()).isEqualTo("query_research_corpus");
+            assertThat(tool.description()).contains(
+                    "biomedical",
+                    "contextSufficient",
+                    "insufficiencyReason",
+                    "explanatory text only",
+                    "do not override"
+            );
             var schema = JsonMapper.builder().build().valueToTree(tool.inputSchema());
             assertThat(schema.get("required").toString()).isEqualTo("[\"question\"]");
             assertThat(schema.at("/properties/question/type").asString()).isEqualTo("string");
             assertThat(schema.at("/properties/question/description").asString()).contains("1,000", "trimming");
             assertThat(schema.at("/properties/resultCount/type").asString()).isEqualTo("integer");
-            assertThat(schema.at("/properties/resultCount/description").asString()).contains("1 and 20");
+            assertThat(schema.at("/properties/resultCount/description").asString()).contains(
+                    "1 and 20",
+                    "passages",
+                    "not source documents",
+                    "defaults to 8"
+            );
         });
     }
 
