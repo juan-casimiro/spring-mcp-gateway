@@ -107,19 +107,19 @@ def call_claude(client: anthropic.Anthropic, question: str, tool_spec: dict, mod
     """Send one labeled question to Claude with the live tool attached.
     Returns True iff Claude's response includes a tool_use block for it.
 
-    The installed anthropic SDK's Messages API no longer exposes a
-    `temperature` parameter (dropped between when this eval was first
-    written and this dependency bump), so tool-choice sampling can no
-    longer be pinned here. A borderline case flipping between reruns is a
-    real, currently unavoidable source of variance in this eval's score —
-    rerun and look for a stable majority rather than trusting one score
-    near a decision boundary."""
+    The installed anthropic SDK's Messages.create no longer has a typed
+    `temperature` parameter, but the API itself still accepts it — sent via
+    `extra_body` per the SDK's migration guidance for parameters dropped
+    from the typed signature. Pinned to 0 for deterministic tool-choice:
+    the recorded 24/26 result was produced at temperature 0, and a
+    borderline case was observed to flip without it."""
     response = client.messages.create(
         model=model,
         max_tokens=300,
         tools=[tool_spec],
         messages=[{"role": "user", "content": question}],
         timeout=REQUEST_TIMEOUT_SECONDS,
+        extra_body={"temperature": 0},
     )
     return any(
         block.type == "tool_use" and getattr(block, "name", None) == tool_spec["name"]

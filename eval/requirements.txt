@@ -3,3 +3,7 @@
 # see eval_tool_selection.py's module docstring for why.
 mcp==2.2.0
 anthropic==1.8.0
+# httpx2 is imported and configured directly (to attach the gateway's
+# Authorization header to the MCP transport) even though it also arrives
+# transitively via mcp; declared explicitly so its version is pinned.
+httpx2==2.13.0

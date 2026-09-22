@@ -51,11 +51,9 @@ Each full run costs a handful of Anthropic API calls (26 questions by
 default); use `--ids` to run a subset while iterating, e.g.
 `--ids t01,t17`.
 
-**Known limitation:** the installed `anthropic` SDK's Messages API has no
-`temperature` parameter to pin, so tool-choice sampling isn't fully
-deterministic — a borderline case can occasionally flip between runs. If a
-score looks off, rerun (or `--ids` just the affected question) rather than
-trusting a single result near a decision boundary.
+Tool-choice is pinned to `temperature=0` via `extra_body` (the installed
+`anthropic` SDK dropped `temperature` from `Messages.create`'s typed
+signature, but the API still accepts it that way) for a reproducible score.
 
 ## Tests
 
