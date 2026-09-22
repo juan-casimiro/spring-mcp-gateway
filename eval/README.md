@@ -5,8 +5,9 @@ correctly — not a CI gate, mirroring how `eval_golden.py`
 (`ai-research-assistant`) and `eval_classification.py` (`ai-agent-module`)
 are also run on demand rather than wired into a pipeline.
 
-Two eval-only dependencies (see `requirements.txt`), unlike `quality/*.py`'s
-stdlib-only scripts: the official MCP and Anthropic Python SDKs, pinned
+Three eval-only dependencies (see `requirements.txt`), unlike `quality/*.py`'s
+stdlib-only scripts: the official MCP and Anthropic Python SDKs, plus
+`httpx2` (used directly to attach the gateway's bearer token), all pinned
 separately and not touching the Java application.
 
 ## What it does

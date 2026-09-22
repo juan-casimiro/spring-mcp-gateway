@@ -13,8 +13,9 @@ Same methodology as ai-research-assistant's eval_golden.py and
 ai-agent-module's eval_classification.py: per-question pass/fail, a
 per-trap-class breakdown, and a JSON artifact.
 
-Unlike quality/*.py, this script has two eval-only dependencies (the `mcp`
-and `anthropic` SDKs — see requirements.txt) rather than being stdlib-only:
+Unlike quality/*.py, this script has eval-only dependencies (the `mcp` and
+`anthropic` SDKs, plus `httpx2` used directly to attach the gateway's
+bearer token — see requirements.txt) rather than being stdlib-only:
 hand-rolling the Streamable HTTP session/SSE handshake and raw Anthropic
 HTTP calls previously required as much test-covered infrastructure code as
 the eval itself. They're pinned separately from the Java application and
