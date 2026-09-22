@@ -2,35 +2,46 @@
 """Measures whether Claude picks query_research_corpus correctly, against a
 hand-labeled set of prompts (JUA-55).
 
-Discovers the tool's live schema from a running MCP gateway (initialize ->
-notifications/initialized -> tools/list over Streamable HTTP) rather than a
-hardcoded copy, so the eval always exercises the description actually being
-served. Then calls the Anthropic Messages API with that tool attached for
-each labeled prompt and records whether Claude chose to call it.
+Discovers the tool's live schema from a running MCP gateway using the
+official MCP Python SDK's Streamable HTTP client, rather than a hardcoded
+copy, so the eval always exercises the description actually being served.
+Then calls the Anthropic Messages API (official SDK) with that tool
+attached for each labeled prompt and records whether Claude chose to call
+it.
 
 Same methodology as ai-research-assistant's eval_golden.py and
 ai-agent-module's eval_classification.py: per-question pass/fail, a
-per-trap-class breakdown, and a JSON artifact. Uses only the Python standard
-library, matching this repo's existing quality/*.py scripts.
+per-trap-class breakdown, and a JSON artifact.
+
+Unlike quality/*.py, this script has two eval-only dependencies (the `mcp`
+and `anthropic` SDKs — see requirements.txt) rather than being stdlib-only:
+hand-rolling the Streamable HTTP session/SSE handshake and raw Anthropic
+HTTP calls previously required as much test-covered infrastructure code as
+the eval itself. They're pinned separately from the Java application and
+don't affect it.
 
 Requires a running gateway (see repo README's demo stack / `docker compose
 up`) and an ANTHROPIC_API_KEY, either in the environment or in a .env file
 (--env-file; defaults to ../ai-research-assistant/.env, a sibling checkout).
 
 Usage:
-    python3 eval_tool_selection.py
-    python3 eval_tool_selection.py --gateway-url http://localhost:8080/mcp
-    python3 eval_tool_selection.py --ids t01,t17
+    python3 -m venv .venv && .venv/bin/pip install -r requirements.txt
+    .venv/bin/python eval_tool_selection.py
+    .venv/bin/python eval_tool_selection.py --gateway-url http://localhost:8080/mcp
+    .venv/bin/python eval_tool_selection.py --ids t01,t17
 """
 import argparse
+import asyncio
 import json
 import os
 import sys
-import urllib.error
-import urllib.request
-from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
+
+import anthropic
+import httpx2
+from mcp import ClientSession
+from mcp.client.streamable_http import streamable_http_client
 
 DEFAULT_DATASET = Path(__file__).parent / "tool_selection_set.json"
 DEFAULT_OUT = Path(__file__).parent / "eval_results" / "tool_selection_results.json"
@@ -39,13 +50,10 @@ DEFAULT_GATEWAY_URL = "http://localhost:8080/mcp"
 DEFAULT_GATEWAY_TOKEN = "local-demo-token"
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 TOOL_NAME = "query_research_corpus"
-MCP_PROTOCOL_VERSION = "2025-06-18"
-ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages"
-ANTHROPIC_VERSION = "2023-06-01"
-REQUEST_TIMEOUT_SECONDS = 30
+REQUEST_TIMEOUT_SECONDS = 30.0
 
 
-class McpDiscoveryError(Exception):
+class ToolDiscoveryError(Exception):
     """Raised when the live tool schema can't be fetched from the gateway."""
 
 
@@ -63,123 +71,59 @@ def load_env_file(path: Path) -> dict[str, str]:
     return values
 
 
-def parse_mcp_response(content_type: str, raw_body: str) -> dict:
-    """Parse an MCP JSON-RPC response body, whether sent as plain JSON or as
-    a single Streamable HTTP SSE frame (observed: tools/list responds via
-    SSE, initialize responds with plain JSON)."""
-    if "text/event-stream" in content_type:
-        data_lines = [line for line in raw_body.splitlines() if line.startswith("data:")]
-        if not data_lines:
-            raise McpDiscoveryError(f"no 'data:' line in SSE response: {raw_body!r}")
-        return json.loads(data_lines[0][len("data:"):].strip())
-    if not raw_body:
-        return {}
-    return json.loads(raw_body)
-
-
-def find_tool(tools: list[dict], name: str) -> dict:
-    for tool in tools:
-        if tool.get("name") == name:
-            return tool
-    raise McpDiscoveryError(f"tool '{name}' not found in tools/list result: {tools}")
-
-
-def to_anthropic_tool_spec(mcp_tool: dict) -> dict:
-    """Map an MCP tools/list entry to the Anthropic Messages API tool shape."""
-    return {
-        "name": mcp_tool["name"],
-        "description": mcp_tool["description"],
-        "input_schema": mcp_tool["inputSchema"],
-    }
-
-
-def _mcp_post(url: str, headers: dict, payload: dict) -> tuple[dict, dict]:
-    request = urllib.request.Request(
-        url, data=json.dumps(payload).encode(), headers=headers, method="POST",
-    )
-    try:
-        with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-            raw_body = response.read().decode()
-            response_headers = dict(response.headers)
-    except urllib.error.URLError as exc:
-        raise McpDiscoveryError(f"request to {url} failed: {exc}") from exc
-    content_type = response_headers.get("Content-Type", "")
-    return parse_mcp_response(content_type, raw_body), response_headers
+async def _discover_tool_async(gateway_url: str, token: str, tool_name: str) -> dict:
+    async with httpx2.AsyncClient(
+        headers={"Authorization": f"Bearer {token}"}, timeout=REQUEST_TIMEOUT_SECONDS,
+    ) as http_client:
+        async with streamable_http_client(gateway_url, http_client=http_client) as (read, write):
+            async with ClientSession(read, write) as session:
+                await session.initialize()
+                result = await session.list_tools()
+                for tool in result.tools:
+                    if tool.name == tool_name:
+                        return {
+                            "name": tool.name,
+                            "description": tool.description,
+                            "input_schema": tool.input_schema,
+                        }
+    raise ToolDiscoveryError(f"tool '{tool_name}' not found on {gateway_url}")
 
 
 def discover_tool(gateway_url: str, token: str, tool_name: str) -> dict:
-    """Fetch a tool's live schema from a running MCP gateway via Streamable
-    HTTP: initialize -> notifications/initialized -> tools/list. This is what
-    a real MCP client does, so the eval exercises the tool description that
-    is actually being served, never a hand-copied one."""
-    headers = {
-        "Authorization": f"Bearer {token}",
-        "Content-Type": "application/json",
-        "Accept": "application/json, text/event-stream",
-    }
-
-    init_result, response_headers = _mcp_post(gateway_url, headers, {
-        "jsonrpc": "2.0", "id": 1, "method": "initialize",
-        "params": {
-            "protocolVersion": MCP_PROTOCOL_VERSION,
-            "capabilities": {},
-            "clientInfo": {"name": "jua55-tool-selection-eval", "version": "0.1"},
-        },
-    })
-    if "error" in init_result:
-        raise McpDiscoveryError(f"initialize failed: {init_result['error']}")
-
-    session_id = response_headers.get("Mcp-Session-Id")
-    if not session_id:
-        raise McpDiscoveryError("gateway did not return an Mcp-Session-Id header")
-    session_headers = {**headers, "Mcp-Session-Id": session_id}
-
-    notify_request = urllib.request.Request(
-        gateway_url,
-        data=json.dumps({"jsonrpc": "2.0", "method": "notifications/initialized"}).encode(),
-        headers=session_headers, method="POST",
-    )
+    """Fetch a tool's live schema from a running MCP gateway via the
+    official MCP SDK's Streamable HTTP client (initialize -> tools/list),
+    so the eval exercises the tool description actually being served,
+    never a hand-copied one. Wraps whatever the SDK/transport raises
+    (connection refused, timeout, protocol errors) into one clear error."""
     try:
-        with urllib.request.urlopen(notify_request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-            response.read()
-    except urllib.error.URLError as exc:
-        raise McpDiscoveryError(f"notifications/initialized failed: {exc}") from exc
-
-    list_result, _ = _mcp_post(gateway_url, session_headers, {
-        "jsonrpc": "2.0", "id": 2, "method": "tools/list",
-    })
-    if "error" in list_result:
-        raise McpDiscoveryError(f"tools/list failed: {list_result['error']}")
-
-    tools = list_result.get("result", {}).get("tools", [])
-    return find_tool(tools, tool_name)
+        return asyncio.run(_discover_tool_async(gateway_url, token, tool_name))
+    except ToolDiscoveryError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - one clear discovery-failure message for any transport/SDK error
+        raise ToolDiscoveryError(f"discovery against {gateway_url} failed: {exc}") from exc
 
 
-def call_claude(question: str, tool_spec: dict, api_key: str, model: str) -> bool:
+def call_claude(client: anthropic.Anthropic, question: str, tool_spec: dict, model: str) -> bool:
     """Send one labeled question to Claude with the live tool attached.
-    Returns True iff Claude's response includes a tool_use block for it."""
-    payload = {
-        "model": model,
-        "max_tokens": 300,
-        "temperature": 0,  # deterministic tool-choice, not creative sampling
-        "tools": [tool_spec],
-        "messages": [{"role": "user", "content": question}],
-    }
-    request = urllib.request.Request(
-        ANTHROPIC_API_URL,
-        data=json.dumps(payload).encode(),
-        headers={
-            "x-api-key": api_key,
-            "anthropic-version": ANTHROPIC_VERSION,
-            "content-type": "application/json",
-        },
-        method="POST",
+    Returns True iff Claude's response includes a tool_use block for it.
+
+    The installed anthropic SDK's Messages API no longer exposes a
+    `temperature` parameter (dropped between when this eval was first
+    written and this dependency bump), so tool-choice sampling can no
+    longer be pinned here. A borderline case flipping between reruns is a
+    real, currently unavoidable source of variance in this eval's score —
+    rerun and look for a stable majority rather than trusting one score
+    near a decision boundary."""
+    response = client.messages.create(
+        model=model,
+        max_tokens=300,
+        tools=[tool_spec],
+        messages=[{"role": "user", "content": question}],
+        timeout=REQUEST_TIMEOUT_SECONDS,
     )
-    with urllib.request.urlopen(request, timeout=REQUEST_TIMEOUT_SECONDS) as response:
-        body = json.loads(response.read().decode())
     return any(
-        block.get("type") == "tool_use" and block.get("name") == tool_spec["name"]
-        for block in body.get("content", [])
+        block.type == "tool_use" and getattr(block, "name", None) == tool_spec["name"]
+        for block in response.content
     )
 
 
@@ -286,19 +230,19 @@ def main() -> int:
 
     print(f"Discovering '{TOOL_NAME}' from {args.gateway_url} ...")
     try:
-        mcp_tool = discover_tool(args.gateway_url, args.gateway_token, TOOL_NAME)
-    except McpDiscoveryError as exc:
+        tool_spec = discover_tool(args.gateway_url, args.gateway_token, TOOL_NAME)
+    except ToolDiscoveryError as exc:
         print(f"Tool discovery failed: {exc}")
         print("Is the gateway running? See README's demo stack (`docker compose up`).")
         return 1
-    tool_spec = to_anthropic_tool_spec(mcp_tool)
     print(f"Discovered tool description ({len(tool_spec['description'])} chars).\n")
 
+    client = anthropic.Anthropic(api_key=api_key)
     results = []
     for i, q in enumerate(questions, start=1):
         print(f"[{i}/{len(questions)}] {q['id']} ({q['trap_class']:<26}) ... ", end="", flush=True)
         try:
-            actual = call_claude(q["question"], tool_spec, api_key, args.model)
+            actual = call_claude(client, q["question"], tool_spec, args.model)
             entry = {
                 "id": q["id"],
                 "question": q["question"],
@@ -307,7 +251,7 @@ def main() -> int:
                 "actual_tool_call": actual,
                 "verdict": verdict(q["expected_tool_call"], actual),
             }
-        except (urllib.error.URLError, json.JSONDecodeError) as exc:
+        except anthropic.APIError as exc:
             entry = {
                 "id": q["id"],
                 "question": q["question"],

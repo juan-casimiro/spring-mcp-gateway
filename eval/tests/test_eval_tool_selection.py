@@ -1,7 +1,7 @@
-"""Unit tests for the network-free logic in eval_tool_selection.py: env-file
-parsing, MCP response parsing (plain JSON vs. SSE), tool lookup/mapping, and
-scoring. No live gateway or Anthropic call is made here."""
-import json
+"""Unit tests for the project-owned logic in eval_tool_selection.py: env-file
+parsing, scoring, and the error/accuracy separation. The MCP handshake and
+Anthropic API calls are the official SDKs' responsibility, not tested here —
+exercised instead by actually running the script against a live gateway."""
 import sys
 import unittest
 from pathlib import Path
@@ -9,16 +9,7 @@ from tempfile import NamedTemporaryFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from eval_tool_selection import (
-    McpDiscoveryError,
-    compute_stats,
-    exit_code_for,
-    find_tool,
-    load_env_file,
-    parse_mcp_response,
-    to_anthropic_tool_spec,
-    verdict,
-)
+from eval_tool_selection import compute_stats, exit_code_for, load_env_file, verdict
 
 
 def _entry(id_, trap_class, expected, actual, verdict_, error=None):
@@ -45,53 +36,6 @@ class LoadEnvFileTests(unittest.TestCase):
             self.assertEqual(values["OTHER"], "quoted")
         finally:
             path.unlink()
-
-
-class ParseMcpResponseTests(unittest.TestCase):
-    def test_plain_json(self):
-        body = json.dumps({"jsonrpc": "2.0", "id": 1, "result": {"ok": True}})
-        self.assertEqual(
-            parse_mcp_response("application/json", body),
-            {"jsonrpc": "2.0", "id": 1, "result": {"ok": True}},
-        )
-
-    def test_empty_body_returns_empty_dict(self):
-        self.assertEqual(parse_mcp_response("application/json", ""), {})
-
-    def test_sse_single_data_line(self):
-        payload = {"jsonrpc": "2.0", "id": 2, "result": {"tools": []}}
-        raw = f"id:abc\nevent:message\ndata:{json.dumps(payload)}\n"
-        self.assertEqual(parse_mcp_response("text/event-stream", raw), payload)
-
-    def test_sse_without_data_line_raises(self):
-        with self.assertRaises(McpDiscoveryError):
-            parse_mcp_response("text/event-stream", "id:abc\nevent:message\n")
-
-
-class FindToolTests(unittest.TestCase):
-    def test_finds_matching_tool(self):
-        tools = [{"name": "other"}, {"name": "query_research_corpus", "description": "x"}]
-        self.assertEqual(find_tool(tools, "query_research_corpus")["description"], "x")
-
-    def test_raises_when_tool_absent(self):
-        with self.assertRaises(McpDiscoveryError):
-            find_tool([{"name": "other"}], "query_research_corpus")
-
-
-class ToAnthropicToolSpecTests(unittest.TestCase):
-    def test_maps_mcp_fields_to_anthropic_shape(self):
-        mcp_tool = {
-            "name": "query_research_corpus",
-            "description": "desc",
-            "inputSchema": {"type": "object", "properties": {}},
-            "annotations": {"title": ""},  # not part of the Anthropic tool shape
-        }
-        spec = to_anthropic_tool_spec(mcp_tool)
-        self.assertEqual(spec, {
-            "name": "query_research_corpus",
-            "description": "desc",
-            "input_schema": {"type": "object", "properties": {}},
-        })
 
 
 class VerdictTests(unittest.TestCase):

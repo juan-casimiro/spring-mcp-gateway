@@ -5,18 +5,28 @@ correctly — not a CI gate, mirroring how `eval_golden.py`
 (`ai-research-assistant`) and `eval_classification.py` (`ai-agent-module`)
 are also run on demand rather than wired into a pipeline.
 
-Uses only the Python standard library, matching `quality/*.py`.
+Two eval-only dependencies (see `requirements.txt`), unlike `quality/*.py`'s
+stdlib-only scripts: the official MCP and Anthropic Python SDKs, pinned
+separately and not touching the Java application.
 
 ## What it does
 
 1. Connects to a running gateway's MCP endpoint and discovers the live
-   `query_research_corpus` schema (`initialize` -> `notifications/initialized`
-   -> `tools/list`), so the eval always exercises the description actually
-   being served, never a hand-copied one.
+   `query_research_corpus` schema via the official MCP SDK's Streamable
+   HTTP client, so the eval always exercises the description actually being
+   served, never a hand-copied one.
 2. Sends each labeled prompt in `tool_selection_set.json` to Claude Haiku
-   with that tool attached, and records whether Claude called it.
+   (official Anthropic SDK) with that tool attached, and records whether
+   Claude called it.
 3. Scores against the label, prints a per-trap-class breakdown and any
    misroutes, and writes `eval_results/tool_selection_results.json`.
+
+## Setup
+
+```sh
+python3 -m venv .venv
+.venv/bin/pip install -r requirements.txt
+```
 
 ## Run it
 
@@ -29,22 +39,33 @@ docker compose up --build
 Then, from this directory:
 
 ```sh
-python3 eval_tool_selection.py
+.venv/bin/python eval_tool_selection.py
 ```
 
 `ANTHROPIC_API_KEY` is read from the environment first, falling back to
 `../../ai-research-assistant/.env` (a sibling checkout, `--env-file` to
 override). The gateway URL/token and dataset can also be overridden — see
-`python3 eval_tool_selection.py --help`.
+`.venv/bin/python eval_tool_selection.py --help`.
+
+Each full run costs a handful of Anthropic API calls (26 questions by
+default); use `--ids` to run a subset while iterating, e.g.
+`--ids t01,t17`.
+
+**Known limitation:** the installed `anthropic` SDK's Messages API has no
+`temperature` parameter to pin, so tool-choice sampling isn't fully
+deterministic — a borderline case can occasionally flip between runs. If a
+score looks off, rerun (or `--ids` just the affected question) rather than
+trusting a single result near a decision boundary.
 
 ## Tests
 
 ```sh
-python3 -m unittest discover -s tests -v
+.venv/bin/python -m unittest discover -s tests -v
 ```
 
-Covers the network-free logic only (env-file parsing, MCP response parsing
-for both plain-JSON and SSE replies, tool lookup, scoring). Live discovery
-and the Claude calls are exercised by actually running the script above, not
-by an automated test — there is no fake gateway/Anthropic server here, only
-the real ones.
+Covers the logic this project owns: env-file parsing, scoring, and the
+error/accuracy separation (an errored request must not count toward
+accuracy or silently exit 0 — see `compute_stats`/`exit_code_for`). The MCP
+handshake and the Anthropic API calls are the official SDKs' job, not
+re-tested here — exercised instead by actually running the script above
+against a live gateway, not a fake one.

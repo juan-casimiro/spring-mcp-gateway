@@ -1,0 +1,5 @@
+# Eval-only dependencies — pinned separately from the Java application,
+# which they do not affect. Official SDKs, not custom-rolled networking:
+# see eval_tool_selection.py's module docstring for why.
+mcp==2.2.0
+anthropic==1.8.0
