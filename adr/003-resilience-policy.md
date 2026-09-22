@@ -207,12 +207,12 @@ breaker state across what is a single downstream dependency).
 | `sliding-window-type` | `COUNT_BASED` | Simpler to reason about than a time-based window for a low, bursty MCP traffic volume. |
 | `sliding-window-size` | 10 | Small enough to react within a handful of MCP calls; large enough that one bad attempt can't misrepresent the window. |
 | `minimum-number-of-calls` | 5 | The breaker won't evaluate a failure rate on fewer than 5 recorded attempts, avoiding an open decision off a tiny, unrepresentative sample. |
-| `failure-rate-threshold` | 50% | Majority of recent attempts failing is the bar for "this dependency is unhealthy," not a single blip. |
+| `failure-rate-threshold` | 50% | Resilience4j opens the breaker when the failure rate is *at or above* the threshold, not only above it — 50% means half or more of the recorded attempts failing is the bar for "this dependency is unhealthy," not a single blip. |
 | `slow-call-duration-threshold` | 20s | Measured — see below. Originally pinned to the 60s read timeout; that value was inert. |
-| `slow-call-rate-threshold` | 50% | Same majority bar as the failure rate, now that the duration threshold can actually fire. |
+| `slow-call-rate-threshold` | 50% | Same at-or-above bar as the failure rate, now that the duration threshold can actually fire. |
 | `wait-duration-in-open-state` | 30s | Time before the breaker allows a probe; short enough to recover quickly, long enough not to hammer a service that just failed. |
 | `permitted-number-of-calls-in-half-open-state` | 1 | One real `/query` probe. No synthetic health check — see half-open risk below. |
-| `automatic-transition-from-open-to-half-open-enabled` | `false` | The breaker waits for the next real call rather than polling on a timer, which would spend a downstream attempt with no caller behind it. |
+| `automatic-transition-from-open-to-half-open-enabled` | `false` | Lazy, caller-driven transition: the breaker only checks whether `wait-duration-in-open-state` has elapsed when the next real call arrives, rather than an internal scheduled thread flipping the state on a timer regardless of traffic. Neither option spends a downstream call by itself — moving to half-open only changes which outcome the *next* call is evaluated against; the trade is eager timer-driven state (and the background thread it needs) versus a lazy check with no extra thread, and lazy is enough for MCP call volume this low. |
 | `record-exceptions` | `RagException` | Listed as the supertype rather than enumerating `RagUnavailableException`/`RagTimeoutException`/`RagContractException` individually, so a new type thrown from inside the protected method is recorded as a failure by default instead of silently being treated as a successful call. |
 | `ignore-exceptions` | `RagContractException`, `RequestNotPermitted` | Neither indicates downstream trouble — see below. |
 
@@ -386,24 +386,39 @@ text as answer content — the opposite of an actionable contract for an LLM
 consumer.
 
 At the `@McpTool` boundary (`QueryResearchCorpusTool.query`), every
-classified failure is logged and **rethrown** — never converted into a
-response object. Spring AI translates the thrown exception into an MCP tool
-error result (`isError=true`); this was verified during implementation
-rather than assumed.
+classified failure is **rethrown** — never converted into a response object
+— so Spring AI translates it into an MCP tool error result (`isError=true`;
+this was verified during implementation rather than assumed) with the
+exception's own message as the client-facing text. Explicit boundary logging
+is not yet applied uniformly to every type; see the note below the table.
 
-| Exception | Severity | Client-facing message |
+| Exception | Boundary log severity | Client-facing message |
 | --- | --- | --- |
 | `RagContractException` | ERROR | "The research service could not process this request. This is an internal error; do not retry with the same input." |
 | `RagUnavailableException` | WARN | "The research corpus is currently unavailable. Do not answer from general knowledge; tell the user that retrieval failed." |
 | `RagTimeoutException` | WARN | "The research request timed out. Do not answer from general knowledge; tell the user that retrieval did not complete." |
 | `RagCircuitOpenException` | WARN | "The research service is temporarily unavailable because the circuit breaker is open." |
-| `RagRateLimitException` | WARN | "The research service request limit has been reached. Please try again later." |
+| `RagRateLimitException` | **not logged at this boundary** (open question) | "The research service request limit has been reached. Please try again later." |
 | `InvalidResearchQuestionException` | WARN | States the specific bound violated (question length, result count). |
 
 `RagContractException` is the one ERROR-level case: it means either the
 gateway sent something invalid or the upstream returned something invalid —
 a real bug either way, not expected operating behaviour like an unavailable
 dependency or an open breaker.
+
+**`RagRateLimitException` currently propagates without matching either
+boundary catch clause.** `QueryResearchCorpusTool.query` catches
+`RagContractException` (ERROR) and, separately,
+`RagUnavailableException | RagTimeoutException | RagCircuitOpenException |
+InvalidResearchQuestionException` (WARN); `RagRateLimitException` is in
+neither list, so it still reaches the caller with its correct message —
+Spring AI's generic exception translation doesn't depend on the boundary
+catch — but no `LOGGER` call fires for it here. This is a known, tracked gap
+rather than an oversight in this document:
+[JUA-83](https://linear.app/juan-casimiro-agent/issue/JUA-83/define-and-test-logging-policy-for-ragratelimitexception)
+exists specifically to settle and test the intended logging severity for
+rate-limit rejections, deliberately separated from this ADR because it's an
+observability/policy decision, not a retry/breaker/timeout parameter.
 
 ### Why the exception hierarchy is flat, not nested
 
@@ -456,8 +471,19 @@ Recorded so a later change doesn't silently re-open a settled question:
 - **Per-failure-type retry counts / multiple `Retry` instances** — the
   failure type isn't known before the call, so nothing could route to a
   second instance.
-- **Custom retry deadline mechanism / `TimeLimiter`** — the read timeout
-  already bounds worst-case call duration.
+- **Custom retry deadline mechanism / `TimeLimiter`.** The 60s read timeout
+  bounds each *individual* attempt, not the whole retried operation: three
+  attempts each capable of taking up to 60s, plus two 1s inter-attempt
+  waits, put the worst-case wall clock for one logical MCP call at roughly
+  182s — a retryable `5xx` arriving just under the read timeout on every
+  attempt is the case that reaches it. Accepted rather than bounded with a
+  `TimeLimiter`: that worst case requires the same failure shape on all
+  three attempts, which the failure-rate and slow-call-rate thresholds above
+  are already tuned to open the breaker well before, and correctness (not
+  spending a fourth attempt, not double-billing) mattered more here than
+  capping the tail latency of an already-degrading dependency. Worth
+  revisiting if this MCP tool call is ever fronted by a caller with its own
+  tighter timeout than 182s.
 - **Runtime Chroma or LLM health preflight, or a `/health` probe before
   `/query`** — would add a second network round trip to every call for a
   freshness guarantee the half-open probe already provides less expensively.
