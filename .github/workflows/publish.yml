@@ -1,25 +1,21 @@
 name: Publish
 
-# Publish is deliberately its own workflow file, triggered only when CI
-# finishes successfully on main. A fork's pull_request cannot generate a
-# push event against this repo, and a fork PR's CI run never has head_branch
-# main, so the publish path is unreachable from a fork by construction, not
-# because of an `if:` guard that a future edit could weaken or remove.
+# Publish is deliberately its own workflow file, triggered only by `push`.
+# A fork's pull_request cannot generate a push event against this repo, so
+# the publish path is unreachable from a fork by construction, not because
+# of an `if:` guard that a future edit could weaken or remove.
 #
-# No concurrency group: every CI success on main gets its own publish run.
+# No concurrency group: every push to main gets its own publish run.
 # A shared group would cancel pending runs queued behind an in-progress one
 # (true even with cancel-in-progress: false), silently dropping images for
 # some main commits.
 on:
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  push:
     branches: [main]
 
 jobs:
   publish:
     name: publish
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -27,8 +23,16 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955 # v4.3.0
+
+      - name: Set up Java 25 (Temurin)
+        uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5.7.0
         with:
-          ref: ${{ github.event.workflow_run.head_sha }}
+          distribution: temurin
+          java-version: "25"
+          cache: maven
+
+      - name: Build and test
+        run: ./mvnw --batch-mode --no-transfer-progress clean verify
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
@@ -48,5 +52,5 @@ jobs:
           context: .
           push: true
           tags: |
-            ghcr.io/${{ github.repository }}:${{ github.event.workflow_run.head_sha }}
+            ghcr.io/${{ github.repository }}:${{ github.sha }}
             ghcr.io/${{ github.repository }}:latest
