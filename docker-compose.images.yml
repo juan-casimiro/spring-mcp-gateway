@@ -1,0 +1,77 @@
+# Published-image demo stack: gateway + RAG service, pulled from GHCR.
+#
+#   docker compose -f docker-compose.images.yml up
+#
+# Unlike docker-compose.yml (the local-build stack, see the README's
+# "Docker Compose (full stack)" section), this file builds nothing and does
+# not need ai-research-assistant checked out as a sibling directory — both
+# images come from ghcr.io. That also means it does not need Jaeger wired
+# up for the local build's trace demo; use docker-compose.yml for that.
+#
+# Image references default to `latest` for convenience. For a reproducible,
+# pinned run, override with explicit tags (commit SHAs recommended):
+#
+#   GATEWAY_IMAGE=ghcr.io/juan-casimiro/spring-mcp-gateway:<sha> \
+#   RAG_IMAGE=ghcr.io/juan-casimiro/ai-research-assistant:<sha> \
+#   docker compose -f docker-compose.images.yml up
+#
+# `latest` on each image is a known-compatible pair as of this Compose
+# revision, but compatibility is governed by the gateway/RAG HTTP contract,
+# not by the two repositories sharing a version number — pinned tags from
+# different points in time are not guaranteed to match.
+#
+# ANTHROPIC_API_KEY must be set in the environment or in a local .env file
+# (Compose loads .env from the current directory automatically). To run
+# against Ollama instead, set LLM_PROVIDER=ollama and start with the
+# `ollama` profile: `docker compose -f docker-compose.images.yml --profile
+# ollama up`, then pull the model into the running container per
+# ai-research-assistant's README.
+services:
+  research-assistant:
+    image: ${RAG_IMAGE:-ghcr.io/juan-casimiro/ai-research-assistant:latest}
+    environment:
+      LLM_PROVIDER: ${LLM_PROVIDER:-anthropic}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OLLAMA_BASE_URL: http://ollama:11434
+      SEED_ON_EMPTY: "true"
+      CHROMA_PATH: /data/chroma_db
+    ports:
+      - "127.0.0.1:${RAG_HOST_PORT:-8000}:8000"
+    volumes:
+      - chroma_data:/data/chroma_db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  gateway:
+    image: ${GATEWAY_IMAGE:-ghcr.io/juan-casimiro/spring-mcp-gateway:latest}
+    ports:
+      - "127.0.0.1:${GATEWAY_HOST_PORT:-8080}:8080"
+    environment:
+      RAG_BASE_URL: http://research-assistant:8000
+      MCP_API_TOKEN: ${MCP_API_TOKEN:-local-demo-token}
+    depends_on:
+      research-assistant:
+        condition: service_healthy
+
+  # Opt-in only, mirrors ai-research-assistant's own compose file: `docker
+  # compose -f docker-compose.images.yml --profile ollama up`. The model is
+  # not pulled automatically; see that repo's README.
+  ollama:
+    image: ollama/ollama:0.34.0
+    profiles: ["ollama"]
+    volumes:
+      - ollama_data:/root/.ollama
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+volumes:
+  chroma_data:
+  ollama_data:

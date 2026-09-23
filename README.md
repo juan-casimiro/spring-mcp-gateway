@@ -288,6 +288,52 @@ gateway over OTLP/HTTP (port `4318`), and the RAG service (JUA-62) over
 OTLP/gRPC (port `4317`) — `docker-compose.yml` sets each service's exporter
 env vars for you. Tear down with `docker compose down`.
 
+### Docker Compose (published images)
+
+`docker-compose.images.yml` runs the same gateway + RAG pairing from images
+published to GHCR, instead of building either service from source:
+
+```bash
+docker compose -f docker-compose.images.yml up
+```
+
+Unlike the local-build stack above, this does not need
+`ai-research-assistant` checked out as a sibling directory, and does not
+start Jaeger. Set `ANTHROPIC_API_KEY` in the environment or in a local
+`.env` file (Compose loads `.env` from the current directory automatically)
+before starting, or use `--profile ollama` per
+[ai-research-assistant's README](https://github.com/juan-casimiro/ai-research-assistant#appendix-local-llm-with-ollama).
+
+By default both images resolve to `latest`, which is convenient for a quick
+demo but not reproducible — `latest` moves as each repository publishes new
+commits to `main`. For a reproducible run, pin both images to explicit
+tags, commit SHAs recommended:
+
+```bash
+GATEWAY_IMAGE=ghcr.io/juan-casimiro/spring-mcp-gateway:<sha> \
+RAG_IMAGE=ghcr.io/juan-casimiro/ai-research-assistant:<sha> \
+docker compose -f docker-compose.images.yml up
+```
+
+Compatibility between the two images is governed by the gateway/RAG HTTP
+contract, not by the repositories sharing a version number — pinned tags
+from unrelated points in time are not guaranteed to be compatible. `latest`
+on each image is a known-compatible pair as of this Compose revision.
+
+The gateway's `depends_on` condition waits for the RAG service's
+healthcheck the same way the local-build stack does, so the gateway never
+starts querying before the corpus is ready. Once up:
+
+- Gateway: `http://localhost:8080/mcp`
+- RAG service: `http://localhost:8000/health`
+
+Tear down with `docker compose -f docker-compose.images.yml down`. To verify
+the gateway can reach the RAG service over the Compose network without a
+paid LLM call, run `./scripts/smoke-test-images.sh`. It uses its own Compose
+project name and host ports `18080`/`18000`, so it can run beside a stack on
+the default ports. Host ports are overridable with `GATEWAY_HOST_PORT` and
+`RAG_HOST_PORT`.
+
 ## Verify with MCP Inspector
 
 If the [Docker Compose stack](#docker-compose-full-stack) is already running,
