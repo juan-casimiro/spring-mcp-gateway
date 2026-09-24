@@ -401,7 +401,7 @@ Exposed over HTTP on the application port (`8080` by default):
 
 | Endpoint | Shows |
 | --- | --- |
-| `/actuator/health` | Gateway health (does not probe the RAG service) |
+| `/actuator/health` | Gateway health; also checks RAG when `RAG_HEALTH_ENABLED=true` |
 | `/actuator/metrics` | Every Micrometer metric; `/actuator/metrics/<name>` shows one |
 | `/actuator/circuitbreakers` | The `rag` circuit breaker: state, failure rate, call counts |
 | `/actuator/circuitbreakerevents` | Recent breaker events (successes, errors, state transitions) |
