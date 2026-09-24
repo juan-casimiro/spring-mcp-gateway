@@ -241,9 +241,15 @@ for startup, and marks the container unhealthy after three consecutive failures.
 It uses a four-second HTTP timeout and fails on HTTP errors or connection errors.
 Docker health status does not itself restart the container.
 
-Actuator health reports gateway health; it does not verify RAG reachability or
-perform paid retrieval/LLM calls. Use the MCP Inspector flow below against
-`http://localhost:8080/mcp` to verify a real upstream query separately.
+By default, Actuator health reports gateway health only: it does not verify RAG
+reachability or perform paid retrieval/LLM calls. Setting `RAG_HEALTH_ENABLED=true`
+adds a probe of the RAG service's `/health` (at `RAG_BASE_URL`, 1s connect / 2s read
+timeout, no retrieval and no LLM call) to `/actuator/health`, so the gateway reports
+`DOWN` (HTTP 503) while RAG is unreachable or not ready. The probe bypasses the
+query path's retry, circuit breaker, and rate limiter. Note the container
+`HEALTHCHECK` polls this same endpoint, so with the probe on it also reflects RAG.
+Use the MCP Inspector flow below against `http://localhost:8080/mcp` to verify a
+real upstream query separately.
 
 ```bash
 docker stop mcp-gateway
@@ -327,12 +333,17 @@ starts querying before the corpus is ready. Once up:
 - Gateway: `http://localhost:8080/mcp`
 - RAG service: `http://localhost:8000/health`
 
-Tear down with `docker compose -f docker-compose.images.yml down`. To verify
-the gateway can reach the RAG service over the Compose network without a
-paid LLM call, run `./scripts/smoke-test-images.sh`. It uses its own Compose
-project name and host ports `18080`/`18000`, so it can run beside a stack on
-the default ports. Host ports are overridable with `GATEWAY_HOST_PORT` and
-`RAG_HOST_PORT`.
+Tear down with `docker compose -f docker-compose.images.yml down`.
+
+To verify that the gateway's own `RAG_BASE_URL` configuration reaches the RAG
+service over the Compose network, without a paid LLM call, run
+`./scripts/smoke-test-images.sh`. It starts both images with
+`RAG_HEALTH_ENABLED=true` (off by default in the Compose file), requires the
+gateway's `/actuator/health` to be `UP`, then stops RAG and requires the gateway
+to turn `DOWN`. That last step fails against a gateway image that predates the
+probe. The script uses its own Compose project name and host ports
+`18080`/`18000`, so it can run beside a stack on the default ports; override host
+ports with `GATEWAY_HOST_PORT` and `RAG_HOST_PORT`.
 
 ## Verify with MCP Inspector
 

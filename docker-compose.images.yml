@@ -53,6 +53,8 @@ services:
     environment:
       RAG_BASE_URL: http://research-assistant:8000
       MCP_API_TOKEN: ${MCP_API_TOKEN:-local-demo-token}
+      # Off by default so the gateway's health stays independent of RAG.
+      RAG_HEALTH_ENABLED: ${RAG_HEALTH_ENABLED:-false}
     depends_on:
       research-assistant:
         condition: service_healthy
