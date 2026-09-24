@@ -39,6 +39,9 @@ rag:
   base-url: ${RAG_BASE_URL:http://localhost:8000}
   connection-timeout: 4s
   read-timeout: 60s
+  health:
+    # Opt-in: adds a RAG /health probe to /actuator/health. Off by default.
+    enabled: ${RAG_HEALTH_ENABLED:false}
 
 resilience4j:
   circuitbreaker:

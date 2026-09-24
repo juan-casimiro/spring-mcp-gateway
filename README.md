@@ -241,9 +241,15 @@ for startup, and marks the container unhealthy after three consecutive failures.
 It uses a four-second HTTP timeout and fails on HTTP errors or connection errors.
 Docker health status does not itself restart the container.
 
-Actuator health reports gateway health; it does not verify RAG reachability or
-perform paid retrieval/LLM calls. Use the MCP Inspector flow below against
-`http://localhost:8080/mcp` to verify a real upstream query separately.
+By default, Actuator health reports gateway health only: it does not verify RAG
+reachability or perform paid retrieval/LLM calls. Setting `RAG_HEALTH_ENABLED=true`
+adds a probe of the RAG service's `/health` (at `RAG_BASE_URL`, 1s connect / 2s read
+timeout, no retrieval and no LLM call) to `/actuator/health`, so the gateway reports
+`DOWN` (HTTP 503) while RAG is unreachable or not ready. The probe bypasses the
+query path's retry, circuit breaker, and rate limiter. Note the container
+`HEALTHCHECK` polls this same endpoint, so with the probe on it also reflects RAG.
+Use the MCP Inspector flow below against `http://localhost:8080/mcp` to verify a
+real upstream query separately.
 
 ```bash
 docker stop mcp-gateway
@@ -287,6 +293,57 @@ Traces export to Jaeger automatically, no manual configuration needed: the
 gateway over OTLP/HTTP (port `4318`), and the RAG service (JUA-62) over
 OTLP/gRPC (port `4317`) — `docker-compose.yml` sets each service's exporter
 env vars for you. Tear down with `docker compose down`.
+
+### Docker Compose (published images)
+
+`docker-compose.images.yml` runs the same gateway + RAG pairing from images
+published to GHCR, instead of building either service from source:
+
+```bash
+docker compose -f docker-compose.images.yml up
+```
+
+Unlike the local-build stack above, this does not need
+`ai-research-assistant` checked out as a sibling directory, and does not
+start Jaeger. Set `ANTHROPIC_API_KEY` in the environment or in a local
+`.env` file (Compose loads `.env` from the current directory automatically)
+before starting, or use `--profile ollama` per
+[ai-research-assistant's README](https://github.com/juan-casimiro/ai-research-assistant#appendix-local-llm-with-ollama).
+
+By default both images resolve to `latest`, which is convenient for a quick
+demo but not reproducible — `latest` moves as each repository publishes new
+commits to `main`. For a reproducible run, pin both images to explicit
+tags, commit SHAs recommended:
+
+```bash
+GATEWAY_IMAGE=ghcr.io/juan-casimiro/spring-mcp-gateway:<sha> \
+RAG_IMAGE=ghcr.io/juan-casimiro/ai-research-assistant:<sha> \
+docker compose -f docker-compose.images.yml up
+```
+
+Compatibility between the two images is governed by the gateway/RAG HTTP
+contract, not by the repositories sharing a version number — pinned tags
+from unrelated points in time are not guaranteed to be compatible. `latest`
+on each image is a known-compatible pair as of this Compose revision.
+
+The gateway's `depends_on` condition waits for the RAG service's
+healthcheck the same way the local-build stack does, so the gateway never
+starts querying before the corpus is ready. Once up:
+
+- Gateway: `http://localhost:8080/mcp`
+- RAG service: `http://localhost:8000/health`
+
+Tear down with `docker compose -f docker-compose.images.yml down`.
+
+To verify that the gateway's own `RAG_BASE_URL` configuration reaches the RAG
+service over the Compose network, without a paid LLM call, run
+`./scripts/smoke-test-images.sh`. It starts both images with
+`RAG_HEALTH_ENABLED=true` (off by default in the Compose file), requires the
+gateway's `/actuator/health` to be `UP`, then stops RAG and requires the gateway
+to turn `DOWN`. That last step fails against a gateway image that predates the
+probe. The script uses its own Compose project name and host ports
+`18080`/`18000`, so it can run beside a stack on the default ports; override host
+ports with `GATEWAY_HOST_PORT` and `RAG_HOST_PORT`.
 
 ## Verify with MCP Inspector
 
@@ -344,7 +401,7 @@ Exposed over HTTP on the application port (`8080` by default):
 
 | Endpoint | Shows |
 | --- | --- |
-| `/actuator/health` | Gateway health (does not probe the RAG service) |
+| `/actuator/health` | Gateway health; also checks RAG when `RAG_HEALTH_ENABLED=true` |
 | `/actuator/metrics` | Every Micrometer metric; `/actuator/metrics/<name>` shows one |
 | `/actuator/circuitbreakers` | The `rag` circuit breaker: state, failure rate, call counts |
 | `/actuator/circuitbreakerevents` | Recent breaker events (successes, errors, state transitions) |
