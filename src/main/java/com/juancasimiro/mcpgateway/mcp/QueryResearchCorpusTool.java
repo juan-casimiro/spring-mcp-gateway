@@ -6,6 +6,7 @@ import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
 import com.juancasimiro.mcpgateway.application.research.exception.InvalidResearchQuestionException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagCircuitOpenException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractException;
+import com.juancasimiro.mcpgateway.integration.rag.exception.RagRateLimitException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
 import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
@@ -92,7 +93,7 @@ public class QueryResearchCorpusTool {
             LOGGER.error("Research corpus contract failure", exception);
             throw exception;
         } catch (RagUnavailableException | RagTimeoutException | RagCircuitOpenException |
-                 InvalidResearchQuestionException exception) {
+                 RagRateLimitException | InvalidResearchQuestionException exception) {
             LOGGER.warn("Research corpus query failed: {}", exception.getMessage());
             throw exception;
         } finally {
