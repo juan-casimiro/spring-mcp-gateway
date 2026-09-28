@@ -213,7 +213,9 @@ evidence.
 
 The tool logs unavailable, timeout, circuit-open, and validation failures at
 WARN, and contract failures at ERROR. `RagRateLimitException` currently has no
-explicit boundary log; JUA-83 tracks that separate observability decision.
+explicit boundary log; whether and how to log rate-limit rejections (and how
+much limiter detail to expose in log output) is a separate observability
+decision.
 
 ## Verification finding
 

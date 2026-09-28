@@ -13,7 +13,7 @@ include:
   - path: ${RAG_SERVICE_PATH:-../ai-research-assistant}/docker-compose.yml
 
 services:
-  # Forward-declared to wire the RAG service's tracing (JUA-62) to Jaeger.
+  # Forward-declared to wire the RAG service's tracing to Jaeger.
   # Its exporter is OTLP/gRPC and opt-in (OTEL_TRACES_EXPORTER defaults to
   # "none"), unlike the gateway's OTLP/HTTP exporter below.
   research-assistant:

@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """Measures whether Claude picks query_research_corpus correctly, against a
-hand-labeled set of prompts (JUA-55).
+hand-labeled set of prompts.
 
 Discovers the tool's live schema from a running MCP gateway using the
 official MCP Python SDK's Streamable HTTP client, rather than a hardcoded

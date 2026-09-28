@@ -1,4 +1,4 @@
-# Tool-selection eval (JUA-55)
+# Tool-selection eval
 
 Manual, run-on-demand check of whether Claude picks `query_research_corpus`
 correctly — not a CI gate, mirroring how `eval_golden.py`
