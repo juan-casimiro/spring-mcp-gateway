@@ -32,6 +32,8 @@ Use `./mvnw test` for unit and contract tests, `./mvnw clean verify` for the ful
 
 Quality reports and mutation tests are optional diagnostics, not CI gates. Docker image builds skip tests; run Maven checks separately.
 
+The `eval/` tool-selection check is opt-in and makes paid Anthropic API calls; see `eval/README.md`.
+
 ## Contracts to preserve
 
 - Preserve source ordering; `context_sufficient=false` is valid, and `insufficiency_reason` is diagnostic only.
