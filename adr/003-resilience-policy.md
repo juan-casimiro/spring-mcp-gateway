@@ -211,9 +211,13 @@ evidence.
 | `RagRateLimitException` | "The research service request limit has been reached. Please try again later." |
 | `InvalidResearchQuestionException` | States the violated question-length or result-count bound. |
 
-The tool logs unavailable, timeout, circuit-open, and validation failures at
-WARN, and contract failures at ERROR. `RagRateLimitException` currently has no
-explicit boundary log; JUA-83 tracks that separate observability decision.
+The tool logs unavailable, timeout, circuit-open, rate-limit, and validation
+failures at WARN with the safe message only (no stack trace, no question text),
+and contract failures at ERROR. Rate-limit rejection is an expected operational
+condition, so it follows the circuit-open treatment; a sustained WARN rate shows
+a client exceeding the limit. `RagRateLimitException` is created without a cause
+because the MCP layer appends cause messages to the tool error, which would
+expose the Resilience4j limiter diagnostic to callers.
 
 ## Verification finding
 

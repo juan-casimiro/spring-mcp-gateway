@@ -49,7 +49,7 @@ public class RagClient implements ResearchGateway {
         } catch (CallNotPermittedException exception) {
             throw new RagCircuitOpenException(exception);
         } catch (RequestNotPermitted exception) {
-            throw new RagRateLimitException(exception);
+            throw new RagRateLimitException();
         }
     }
 
