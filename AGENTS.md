@@ -32,6 +32,8 @@ Use `./mvnw test` for unit and contract tests, `./mvnw clean verify` for the ful
 
 Quality reports and mutation tests are optional diagnostics, not CI gates. Docker image builds skip tests; run Maven checks separately.
 
+`eval/` holds an on-demand Python eval of whether Claude selects `query_research_corpus` correctly (not a CI gate); see `eval/README.md`. `quality/` and `scripts/` are documented in the README.
+
 ## Contracts to preserve
 
 - Preserve source ordering; `context_sufficient=false` is valid, and `insufficiency_reason` is diagnostic only.
