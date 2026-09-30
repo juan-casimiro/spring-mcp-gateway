@@ -7,7 +7,6 @@ import com.juancasimiro.mcpgateway.integration.rag.exception.RagRateLimitExcepti
 import io.github.resilience4j.circuitbreaker.CircuitBreaker;
 import io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry;
 import io.github.resilience4j.ratelimiter.RateLimiterRegistry;
-import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -101,7 +100,7 @@ class RagClientRateLimitTest {
     private void assertRateLimitRejection() {
         assertThatThrownBy(() -> ragClient.query(TEST_QUESTION))
                 .isInstanceOf(RagRateLimitException.class)
-                .hasCauseInstanceOf(RequestNotPermitted.class);
+                .hasNoCause();
     }
 
     private void assertBreakerCounts(int successes, int failures) {

@@ -6,6 +6,7 @@ import com.juancasimiro.mcpgateway.application.research.ResearchQuestion;
 import com.juancasimiro.mcpgateway.application.research.exception.InvalidResearchQuestionException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagCircuitOpenException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagContractException;
+import com.juancasimiro.mcpgateway.integration.rag.exception.RagRateLimitException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagTimeoutException;
 import com.juancasimiro.mcpgateway.integration.rag.exception.RagUnavailableException;
 import com.juancasimiro.mcpgateway.mcp.model.QueryResearchCorpusResponse;
@@ -170,6 +171,18 @@ class QueryResearchCorpusToolTest {
         assertThatThrownBy(() -> tool.query("test question", 8))
                 .isSameAs(failure);
         assertBoundaryLog(Level.WARN, failure, false);
+    }
+
+    @Test
+    void rethrowsRateLimitFailureLoggedAsWarnWithoutQuestionText() {
+        RagRateLimitException failure = new RagRateLimitException();
+        QueryResearchCorpusTool tool = toolThrowing(failure);
+
+        assertThatThrownBy(() -> tool.query("test question", 8))
+                .isSameAs(failure);
+        assertBoundaryLog(Level.WARN, failure, false);
+        assertThat(logs.list).singleElement().satisfies(event ->
+                assertThat(event.getFormattedMessage()).doesNotContain("test question"));
     }
 
     private void assertBoundaryLog(Level level, RuntimeException failure, boolean includesCause) {
