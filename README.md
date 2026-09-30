@@ -290,7 +290,7 @@ Once up:
 - Jaeger UI: `http://localhost:16686`
 
 Traces export to Jaeger automatically, no manual configuration needed: the
-gateway over OTLP/HTTP (port `4318`), and the RAG service (JUA-62) over
+gateway over OTLP/HTTP (port `4318`), and the RAG service over
 OTLP/gRPC (port `4317`) — `docker-compose.yml` sets each service's exporter
 env vars for you. Tear down with `docker compose down`.
 
@@ -411,8 +411,9 @@ Exposed over HTTP on the application port (`8080` by default):
 Only `/actuator/health` is public and omits component details. All other endpoints
 require the same bearer token as `/mcp`. Docker Compose publishes the gateway on
 `127.0.0.1` only. The upstream RAG service still publishes port `8000` separately;
-callers can bypass gateway authentication through that port. Reducing that exposure
-is tracked separately in [JUA-90](https://linear.app/juan-casimiro-agent/issue/JUA-90/bind-the-rag-demos-published-port-to-localhost).
+callers can bypass gateway authentication through that port. Reducing that
+exposure — binding the RAG demo's published port to localhost — is handled in
+the `ai-research-assistant` repository, not here.
 
 ### Metrics
 

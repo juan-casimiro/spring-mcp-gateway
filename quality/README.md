@@ -8,7 +8,7 @@ Python 3 is required only for `quality/summarize.py`, `quality/compare_baseline.
 and `quality/render_summary.py`. All three use only the Python standard
 library; Maven builds, tests, and JaCoCo/PMD/PIT runs do not require Python.
 
-The GitHub Actions `build-and-test` check (JUA-67) runs the regular Maven
+The GitHub Actions `build-and-test` check runs the regular Maven
 test lifecycle on every PR and push to `main` and can block merging. The
 separate `quality-report` check (`.github/workflows/quality.yml`) runs this
 quality profile plus the comparison/rendering below on the same triggers,

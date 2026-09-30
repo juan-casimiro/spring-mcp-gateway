@@ -2,15 +2,13 @@
 
 ## Context
 
-[JUA-43](https://linear.app/juan-casimiro-agent/issue/JUA-43/epic-b-mcp-tool-surface-design)
-frames the MCP tool surface as an API/product-design problem, not a
-collection of `@McpTool` annotations: more tools is not automatically
-better, and every exposed field or parameter is a promise to callers.
-[JUA-50](https://linear.app/juan-casimiro-agent/issue/JUA-50/expose-query_research_corpus-as-an-mcp-tool-over-streamable-http)
-shipped the one tool the gateway exposes today, `query_research_corpus`
-(`QueryResearchCorpusTool`). This entry records four boundary decisions
-that shaped that tool's surface — including what was deliberately left
-out.
+The gateway treats the MCP tool surface as an API/product-design problem,
+not a collection of `@McpTool` annotations: more tools is not automatically
+better, and every exposed field or parameter is a promise to callers. The
+gateway exposes one tool today, `query_research_corpus`
+(`QueryResearchCorpusTool`), mapped 1:1 onto `RagClient.query()` over
+Streamable HTTP. This entry records four boundary decisions that shaped
+that tool's surface — including what was deliberately left out.
 
 ## Decisions
 
@@ -21,15 +19,14 @@ nothing in the codebase references it. The RAG service itself has no
 authentication: the gateway never forwards its bearer token upstream
 (README), and the RAG service's own compose file still publishes port
 `8000` on all interfaces, so it is directly reachable and not isolated
-behind the gateway (tracked separately in
-[JUA-90](https://linear.app/juan-casimiro-agent/issue/JUA-90/bind-the-rag-demos-published-port-to-localhost)).
+behind the gateway (reducing that exposure by binding the port to
+localhost is handled in the RAG service's own repository).
 A read-only tool surface is the only defensible boundary while that is
 true — a write endpoint reachable by any MCP client, sitting in front of
 an unauthenticated service, would let a client mutate the corpus with no
-accountability for who did it. This is independent of
-[JUA-89](https://linear.app/juan-casimiro-agent/issue/JUA-89/add-authentication-to-the-mcp-gateway)'s
-gateway-side bearer authentication, which protects the gateway's own
-endpoints, not the RAG service's.
+accountability for who did it. This is independent of the gateway-side
+bearer authentication described in the README, which protects the
+gateway's own endpoints, not the RAG service's.
 
 ### 2. `insufficiency_reason` stays exposed for transparency, but is not a routing signal
 
@@ -46,9 +43,9 @@ diagnostic, human-readable context; MCP clients should use
 `context_sufficient` for programmatic decisions and should not branch on
 the text of `insufficiency_reason`. The MCP contract specifies
 `insufficiency_reason` is `null` whenever `context_sufficient` is `true`
-([JUA-91](https://linear.app/juan-casimiro-agent/issue/JUA-91/clarify-and-enforce-insufficiency-reason-contract-in-rag-responses)
-enforces this upstream in `ai-research-assistant`). No gateway code
-change was needed.
+(enforced upstream in `ai-research-assistant`, which normalizes the field
+after model output so callers get a deterministic contract regardless of
+model compliance). No gateway code change was needed.
 
 ### 3. Retrieval knobs are pinned, not exposed
 
@@ -85,9 +82,9 @@ detect it.
 **Decision:** defer `list_corpus_documents` until there is a source of
 truth for the corpus's actual queryable contents (e.g. an endpoint
 reporting ingested documents, not intended ones). Add it only if a real
-agent use case needs to enumerate the corpus — consistent with JUA-43's
-"additional tools only get added if a real agent use case justifies
-adding the corresponding RAG endpoint."
+agent use case needs to enumerate the corpus — consistent with the design
+rule above that additional tools only get added if a real agent use case
+justifies adding the corresponding RAG endpoint.
 
 ## Consequences
 

@@ -38,6 +38,7 @@ Public deployment would be separate, scoped work requiring:
 - GHCR provides versioned delivery evidence without hosting cost or an on-call
   surface.
 - Reviewers run the gateway locally; there is no hosted demo URL.
-- Public deployment starts with the requirements above and its own scoped work
-  (as tracked for `ai-research-assistant` in JUA-28).
+- Public deployment starts with the requirements above and its own scoped
+  work (for example, API-key authentication and rate limiting on the
+  public-facing agent endpoint).
 - Revisit this decision if the cost or reliability trade-off changes.

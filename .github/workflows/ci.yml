@@ -57,6 +57,7 @@ jobs:
       # Proves that a clean checkout builds an image that starts and reports
       # healthy with its default configuration and no RAG service running.
       # Does not prove MCP behaviour, RAG connectivity, or live LLM calls;
-      # the two-service check belongs to JUA-93.
+      # the two-service check lives in scripts/smoke-test-images.sh, which
+      # runs the published-image stack from docker-compose.images.yml.
       - name: Smoke-test the image (starts and becomes healthy)
         run: scripts/smoke-test-image.sh spring-mcp-gateway:ci-smoke-test
