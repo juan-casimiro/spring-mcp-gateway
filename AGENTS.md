@@ -2,6 +2,12 @@
 
 Short project map and durable agent guidance. Use the README and ADRs for detail.
 
+## Shared guidance
+
+Follow the [development guidance index](https://github.com/juan-casimiro/development-config/blob/main/AGENTS.md)
+for shared process and environment instructions. If already loaded in this chat,
+reuse its completed startup and instructions.
+
 ## Project map
 
 Java 25 / Spring Boot 4.1 MCP gateway exposing the sibling `ai-research-assistant` FastAPI RAG service over Streamable HTTP:
