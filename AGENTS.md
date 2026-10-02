@@ -2,6 +2,13 @@
 
 Short project map and durable agent guidance. Use the README and ADRs for detail.
 
+## Shared development guidance
+
+Follow `AGENTS.md` in the `development-config` checkout beside this repository's
+main checkout (`../development-config` from the main checkout root; from a
+worktree, find the main checkout with `git worktree list`). If it is
+unavailable, report that and stop before task work.
+
 ## Project map
 
 Java 25 / Spring Boot 4.1 MCP gateway exposing the sibling `ai-research-assistant` FastAPI RAG service over Streamable HTTP:
