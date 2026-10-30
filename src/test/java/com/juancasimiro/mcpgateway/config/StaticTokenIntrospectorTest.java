@@ -40,11 +40,11 @@ class StaticTokenIntrospectorTest {
     }
 
     @Test
-    void warnsAboutDemoCredentialWithoutPrintingIt(CapturedOutput output) {
-        var introspector = new StaticTokenIntrospector("local-demo-token");
-        assertThat(introspector.introspect("local-demo-token").getName()).isEqualTo("gateway-client");
-        assertThat(output).contains("public demo API token is active", "MCP_API_TOKEN")
-                .doesNotContain("local-demo-token");
+    void refusesPublicDemoCredentialWithoutPrintingIt(CapturedOutput output) {
+        assertThatThrownBy(() -> new StaticTokenIntrospector("local-demo-token"))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Set a private MCP_API_TOKEN; the public demo credential is not allowed");
+        assertThat(output).doesNotContain("local-demo-token");
     }
 
     @Test

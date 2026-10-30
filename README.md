@@ -82,12 +82,12 @@ Tracing samples all requests by default. See [Observability](#observability) for
 ## Authentication
 
 Authentication is enabled for `/mcp` and the exposed Actuator endpoints, except
-`/actuator/health`. Docker and local Java execution both use the public demo token
-`local-demo-token` by default. No credential setup or additional service is needed.
+`/actuator/health`. Set a private `MCP_API_TOKEN` before starting Docker or local
+Java execution. Missing, blank, and the former public demo credential prevent startup.
 Send this header on **every** protected request, including within an MCP session:
 
 ```text
-Authorization: Bearer local-demo-token
+Authorization: Bearer <your-private-token>
 ```
 
 Missing, malformed, or incorrect credentials return `401 Unauthorized` with a
@@ -97,11 +97,10 @@ are not accepted. The gateway never forwards your token to the RAG service.
 This is an academic shared-token demonstration, **not MCP OAuth authorization**:
 there is no login, discovery, token issuance, user identity, or expiration. The
 configured token is compared locally in memory using `MessageDigest.isEqual`.
-A startup warning identifies use of the public demo credential without printing it.
-Anyone who knows the demo value can authenticate; keep the demo on localhost.
-For deployment beyond localhost, use a private token and HTTPS.
+The former public demo credential is rejected. Keep the stack on localhost;
+external deployments additionally require HTTPS and an access-control review.
 
-### Optional: use a private token
+### Configure a private token
 
 Generate a random value and start the stack from the same shell:
 
@@ -112,20 +111,20 @@ docker compose up --build
 
 For local Java execution, use the same exported variable with
 `./mvnw spring-boot:run`. With `docker run`, pass `-e MCP_API_TOKEN` to forward it.
-Use your chosen token in Inspector instead of the demo value. Keep it in your
+Use your chosen token in Inspector. Keep it in your
 chosen local secret storage if you want to reuse it; generating another value
 creates a different token. Do not commit private tokens or paste them into logs.
 
 Compose also reads `MCP_API_TOKEN` from a local `.env` file (ignored by Git).
 Plain Java execution does not automatically load `.env`; export the variable.
-A configured empty/blank token prevents startup. Only one token is accepted: an
-override replaces the demo value. To rotate it, change the variable and recreate
+A missing, empty/blank, or public demo token prevents startup. Only one token
+is active at a time. To rotate it, change the variable and recreate
 the gateway (`docker compose up -d --force-recreate gateway`) or restart the local
 Java process. Existing MCP sessions still need the new token on their next request.
 
 ### Quick authentication checks
 
-With the gateway running and the default demo token:
+With the gateway running and `MCP_API_TOKEN` exported:
 
 ```bash
 # Public health check: 200 when healthy; does not call the RAG service.
@@ -135,7 +134,7 @@ curl -i http://localhost:8080/actuator/health
 curl -i -X POST http://localhost:8080/mcp
 
 # Valid credentials on a protected endpoint: 200.
-curl -i -H 'Authorization: Bearer local-demo-token' \
+curl -i -H "Authorization: Bearer $MCP_API_TOKEN" \
   http://localhost:8080/actuator/metrics
 ```
 
@@ -185,11 +184,13 @@ Never place credentials in source resources or pass secrets as build arguments.
 
 ### Run and configure
 
-Set `RAG_BASE_URL` to an address reachable **from the container**:
+Export `MCP_API_TOKEN` as shown in [Authentication](#authentication), then set
+`RAG_BASE_URL` to an address reachable **from the container**:
 
 ```bash
 docker run -d --name mcp-gateway \
   -p 127.0.0.1:8080:8080 \
+  -e MCP_API_TOKEN \
   -e RAG_BASE_URL=http://rag-service:8000 \
   spring-mcp-gateway:local
 ```
@@ -222,6 +223,7 @@ example, to use port `9090`:
 docker run -d --name mcp-gateway-custom \
   -p 127.0.0.1:8081:9090 \
   -e SERVER_PORT=9090 \
+  -e MCP_API_TOKEN \
   -e RAG_BASE_URL=http://rag-service:8000 \
   spring-mcp-gateway:local
 ```
@@ -259,9 +261,10 @@ docker rm mcp-gateway
 ### Docker Compose (full stack)
 
 `docker-compose.yml` brings up the gateway, the RAG service, and Jaeger with
-one command:
+a private token and one startup command:
 
 ```bash
+export MCP_API_TOKEN="$(openssl rand -hex 32)"
 docker compose up --build
 ```
 
@@ -367,8 +370,7 @@ skip to step 3. Steps 1–2 are only for starting the services locally without C
    (for example `research-gateway`), choose **streamable-http**, and enter
    `http://localhost:8080/mcp`. Click **Add**.
 5. On that server's card, open **Settings → Custom Headers → + Add Header**.
-   Set the name to `Authorization` and the value to `Bearer local-demo-token`
-   (or `Bearer <your-private-token>` if overridden). Close Settings, then turn
+   Set the name to `Authorization` and the value to `Bearer <your-private-token>`. Close Settings, then turn
    on the server's connection switch. Leave **Protocol Era** at **Legacy**.
    Do not configure OAuth for this static-token demo.
 6. Open **Tools** and confirm that `query_research_corpus` is listed.
@@ -456,7 +458,7 @@ and search Jaeger for the `rag.query` operation in service `spring-mcp-gateway`.
 2. Read the timer:
 
    ```bash
-   curl -s -H 'Authorization: Bearer local-demo-token' \
+   curl -s -H "Authorization: Bearer $MCP_API_TOKEN" \
      'http://localhost:8080/actuator/metrics/mcp.tool.duration?tag=tool:query_research_corpus&tag=outcome:success'
    ```
 

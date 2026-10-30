@@ -34,10 +34,11 @@ python3 -m venv .venv
 Start the demo stack first (repo root):
 
 ```sh
+export MCP_API_TOKEN="$(openssl rand -hex 32)"
 docker compose up --build
 ```
 
-Then, from this directory:
+Keep `MCP_API_TOKEN` exported in the evaluation shell. Then, from this directory:
 
 ```sh
 .venv/bin/python eval_tool_selection.py

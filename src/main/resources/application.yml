@@ -8,7 +8,7 @@ spring:
 
 gateway:
   security:
-    api-token: ${MCP_API_TOKEN:local-demo-token}
+    api-token: ${MCP_API_TOKEN:}
 
 management:
   endpoint:
