@@ -48,7 +48,6 @@ DEFAULT_DATASET = Path(__file__).parent / "tool_selection_set.json"
 DEFAULT_OUT = Path(__file__).parent / "eval_results" / "tool_selection_results.json"
 DEFAULT_ENV_FILE = Path(__file__).resolve().parents[2] / "ai-research-assistant" / ".env"
 DEFAULT_GATEWAY_URL = "http://localhost:8080/mcp"
-DEFAULT_GATEWAY_TOKEN = "local-demo-token"
 DEFAULT_MODEL = "claude-haiku-4-5-20251001"
 TOOL_NAME = "query_research_corpus"
 REQUEST_TIMEOUT_SECONDS = 30.0
@@ -199,14 +198,17 @@ def main() -> int:
     parser.add_argument("--out", type=Path, default=DEFAULT_OUT)
     parser.add_argument("--gateway-url", default=DEFAULT_GATEWAY_URL,
                          help=f"MCP Streamable HTTP endpoint (default: {DEFAULT_GATEWAY_URL})")
-    parser.add_argument("--gateway-token", default=DEFAULT_GATEWAY_TOKEN,
-                         help="Bearer token for the gateway (default: local-demo-token)")
+    parser.add_argument("--gateway-token", default=os.environ.get("MCP_API_TOKEN"),
+                         help="Bearer token for the gateway (defaults to MCP_API_TOKEN)")
     parser.add_argument("--env-file", type=Path, default=DEFAULT_ENV_FILE,
                          help=f"Fallback source for ANTHROPIC_API_KEY (default: {DEFAULT_ENV_FILE})")
     parser.add_argument("--model", default=DEFAULT_MODEL)
     parser.add_argument("--ids", type=str, default=None,
                          help="Comma-separated question ids to run, e.g. t01,t17")
     args = parser.parse_args()
+
+    if not args.gateway_token or not args.gateway_token.strip() or args.gateway_token == "local-demo-token":
+        parser.error("Set a private MCP_API_TOKEN or pass --gateway-token")
 
     api_key = os.environ.get("ANTHROPIC_API_KEY") or load_env_file(args.env_file).get("ANTHROPIC_API_KEY")
     if not api_key:

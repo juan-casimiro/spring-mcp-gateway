@@ -33,6 +33,8 @@ export ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-smoke-test-placeholder-key}"
 
 # Opt-in gateway health probe of RAG; off in the compose file by default.
 export RAG_HEALTH_ENABLED=true
+export MCP_API_TOKEN
+MCP_API_TOKEN=$(openssl rand -hex 32)
 
 echo "==> starting research-assistant and gateway from published images"
 "${compose[@]}" up -d research-assistant gateway

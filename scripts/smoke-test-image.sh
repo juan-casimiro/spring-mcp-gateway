@@ -5,7 +5,7 @@
 # Usage: scripts/smoke-test-image.sh <image-reference>
 #
 # Proves: the image starts and the gateway reports healthy with its default
-# configuration and no RAG service reachable (the health endpoint is
+# configuration plus an ephemeral private token and no RAG service reachable (the health endpoint is
 # anonymous and has no RAG health indicator).
 # Does NOT prove: MCP behaviour, RAG connectivity, or live LLM calls.
 #
@@ -47,7 +47,9 @@ trap cleanup EXIT
 trap 'exit 130' INT
 trap 'exit 143' TERM
 
-if ! docker run -d --name "$container" "$image" > /dev/null; then
+export MCP_API_TOKEN
+MCP_API_TOKEN=$(openssl rand -hex 32)
+if ! docker run -d --name "$container" -e MCP_API_TOKEN "$image" > /dev/null; then
   echo "::error::container could not be started from ${image}" >&2
   exit 1
 fi
